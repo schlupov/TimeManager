@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeManager", "TimeManager\TimeManager.csproj", "{BBD5CC4E-1E0B-4059-BA90-38A4991089A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DAL", "DAL\DAL.csproj", "{D1612CE1-D624-450B-AC1D-433767017BF7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BBD5CC4E-1E0B-4059-BA90-38A4991089A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BBD5CC4E-1E0B-4059-BA90-38A4991089A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BBD5CC4E-1E0B-4059-BA90-38A4991089A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BBD5CC4E-1E0B-4059-BA90-38A4991089A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1612CE1-D624-450B-AC1D-433767017BF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1612CE1-D624-450B-AC1D-433767017BF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1612CE1-D624-450B-AC1D-433767017BF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1612CE1-D624-450B-AC1D-433767017BF7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
