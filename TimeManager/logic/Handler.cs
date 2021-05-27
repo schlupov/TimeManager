@@ -1,6 +1,8 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
+using DAL;
 
 namespace TimeManager.logic
 {
@@ -154,6 +156,19 @@ namespace TimeManager.logic
             {
                 await Console.Error.WriteLineAsync("Use valid email address");
             }
+        }
+
+        public async Task HandleRecordAsync(string type, string inTime, string outTime, string date, string comment)
+        {
+            if (string.IsNullOrEmpty(type))
+            {
+                type = WorkType.Issue.ToString("G");
+            }
+            await Console.Out.WriteLineAsync(type);
+            var dateTime = DateTime.Parse(date, new CultureInfo("cs-CZ"));
+            var intt = DateTime.Parse(inTime, new CultureInfo("cs-CZ"));
+            Console.WriteLine(dateTime.ToShortDateString());
+            Console.WriteLine(intt.Hour);
         }
     }
 }

@@ -58,7 +58,7 @@ namespace DAL.repository
             await SaveAsync();
         }
         
-        public async Task<bool> DeleteUserAsync(string email, string password)
+        public async Task<bool> DeleteUserAsync(string email)
         {
             try
             {

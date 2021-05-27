@@ -28,7 +28,8 @@ namespace TimeManager
                 new Command("create", "create new user account"),
                 new Command("read", "read user account settings"),
                 new Command("update", "update user account settings"),
-                new Command("delete", "delete user account"));
+                new Command("delete", "delete user account"),
+                new Command("record", "create, read, update or delete record of your work"));
             var create = argumentParser.CreateOptions();
             create.Handler = CommandHandler.Create<string, string, string>(handler.HandleCreateAsync);
             var read = argumentParser.ReadOptions();
@@ -37,13 +38,15 @@ namespace TimeManager
             update.Handler = CommandHandler.Create<string, bool, bool, bool>(handler.HandleUpdateAsync);
             var delete = argumentParser.DeleteOptions();
             delete.Handler = CommandHandler.Create<string, bool>(handler.HandleDeleteAsync);
+            var record = argumentParser.RecordOptions(handler);
 
             var rootCommand = new RootCommand
             {
                 create,
                 read,
                 update,
-                delete
+                delete,
+                record
             };
 
             await rootCommand.InvokeAsync(args);

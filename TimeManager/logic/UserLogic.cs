@@ -203,7 +203,7 @@ namespace TimeManager.logic
                     return;
                 }
 
-                var success = await userRepository.DeleteUserAsync(email, password);
+                var success = await userRepository.DeleteUserAsync(email);
                 if (success)
                 {
                     await Console.Out.WriteAsync($"User {user.Email} deleted. Don't forget to update your config.json");
