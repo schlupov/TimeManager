@@ -16,8 +16,7 @@ namespace DAL.repository
 
         public async Task<User> CreateUserAsync(string name, string email, string password)
         {
-            var token = await GenerateNewTokenAsync();
-            User user = new User {Name = name, Email = email, Password = password, Token = token};
+            User user = new User {Name = name, Email = email, Password = password};
             try
             {
                 await InsertAsync(user);
@@ -30,31 +29,15 @@ namespace DAL.repository
             return user;
         }
 
-        public async Task<string> GenerateNewTokenAsync()
-        {
-            var users = await GetAllAsync();
-            List<string> tokens = users.Select(userFromDb => userFromDb.Token).ToList();
-            string token;
-            while (true)
-            {
-                token = Guid.NewGuid().ToString("N");
-                if (!tokens.Contains(token))
-                {
-                    break;
-                }
-            }
-            return token;
-        }
-
-        public async Task InsertNewTokenAsync(User user, string token)
-        {
-            user.Token = token;
-            await SaveAsync();
-        }
-        
         public async Task InsertNewPasswordAsync(User user, string password)
         {
             user.Password = password;
+            await SaveAsync();
+        }
+        
+        public async Task InsertNewEmailAsync(User user, string email)
+        {
+            user.Email = email;
             await SaveAsync();
         }
         
@@ -72,9 +55,10 @@ namespace DAL.repository
             return true;
         }
 
-        public async Task<User> GetUserByTokenAsync(string token)
+        public async Task InsertNewNameAsync(User user, string name)
         {
-            return await context.Users.FirstOrDefaultAsync(x => x.Token == token);
+            user.Name = name;
+            await SaveAsync();
         }
     }
 }

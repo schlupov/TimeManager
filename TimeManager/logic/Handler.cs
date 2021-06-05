@@ -1,6 +1,5 @@
 using System;
 using System.Globalization;
-using System.IO;
 using System.Threading.Tasks;
 using DAL;
 
@@ -10,151 +9,87 @@ namespace TimeManager.logic
     {
         private readonly UserLogic userLogic = new();
 
-        public async Task HandleCreateAsync(string name, string email, string password)
+        public async Task HandleCreateAsync()
         {
+            string name = null;
+            string email = null;
+            string password = null;
+            bool success = false;
+            
+            while (!success)
+            {
+                await Console.Out.WriteLineAsync("Name:");
+                name = await Console.In.ReadLineAsync();
+                await Console.Out.WriteLineAsync("Email:");
+                email = await Console.In.ReadLineAsync();
+                await Console.Out.WriteLineAsync("Password:");
+                password = await Console.In.ReadLineAsync();
+                
+                if (name is {Length: <= 3})
+                {
+                    await Console.Error.WriteLineAsync("Name is too short");
+                    name = null;
+                }
+                if (password is {Length: <= 3})
+                {
+                    await Console.Error.WriteLineAsync("Password is too short");
+                    password = null;
+                }
+
+                if (name != null && email != null && password != null)
+                {
+                    success = true;
+                }
+            }
+
+            Program.Configuration.Email = email;
+            Program.Configuration.Password = password;
+            Program.Configuration.Name = name;
             await userLogic.CreateUserAsync(name, email, password);
         }
 
-        public async Task HandleReadAsync(string settings, string token, bool settingsConfigEmail,
-            bool tokenConfigEmail)
+        public async Task<string> HandleLogicAsync(string email, string password)
         {
-            string email = null;
-            string password = null;
-            if (settingsConfigEmail || tokenConfigEmail)
+            bool successPassword = await userLogic.CheckPasswordAsync(email, password);
+            if (!successPassword)
             {
-                email = Program.Configuration.Email;
-                password = Program.Configuration.Password;
+                return null;
             }
-
-            if (!string.IsNullOrEmpty(settings) || !string.IsNullOrEmpty(token))
+            var user = await userLogic.ReadUserSettingsAsync(email);
+            if (user == null || Program.Configuration.Name == user.Name)
             {
-                email = string.IsNullOrEmpty(settings) ? token : settings;
+                return user?.Name;
             }
+            await Console.Error.WriteLineAsync($"Configuring user name to {user.Name}");
+            Program.Configuration.Name = user.Name;
+            return user.Name;
+        }
 
-            bool successToken = await userLogic.CheckTokenAsync(email);
-            if (!successToken)
+        public async Task HandleUpdateAsync(string update)
+        {
+            switch (update)
             {
-                if (password == null)
-                {
-                    await Console.Out.WriteAsync(
-                        $"Couldn't find token for email {email} in {Program.Configuration.PathToToken}, " +
-                        $"please type your password: ");
-                    password = Console.ReadLine();
-                }
-
-                bool successPassword = await userLogic.CheckPasswordAsync(email, password);
-                if (!successPassword)
-                {
-                    await Console.Error.WriteLineAsync("Bad token and password");
-                    return;
-                }
-            }
-
-            if (!string.IsNullOrEmpty(settings) || settingsConfigEmail)
-            {
-                await userLogic.ReadUserSettingsAsync(email);
-            }
-
-            if (!string.IsNullOrEmpty(token) || tokenConfigEmail)
-            {
-                await userLogic.ReadUserTokenAsync(email);
+                case "email":
+                    await userLogic.UpdateEmailAsync(Program.Configuration.Email);
+                    break;
+                case "password":
+                    await userLogic.UpdatePasswordAsync(Program.Configuration.Email);
+                    break;
+                case "name":
+                    await userLogic.UpdateNameAsync(Program.Configuration.Email);
+                    break;
+                default:
+                    await Console.Error.WriteLineAsync("Bad choice, choose email, password or name");
+                    break;
             }
         }
 
-        public async Task HandleUpdateAsync(string email, bool settingsConfigEmail, bool token, bool password)
+        public async Task HandleDeleteAsync()
         {
-            if (!token && !password)
+            bool success = await userLogic.DeleteUserAsync(Program.Configuration.Email);
+            if (success)
             {
-                await Console.Error.WriteLineAsync("Choose --token or --password");
-                return;
-            }
-            string configEmail = null;
-            if (settingsConfigEmail && Program.Configuration.Email != null)
-            {
-                configEmail = Program.Configuration.Email;
-            }
-            if (settingsConfigEmail && Program.Configuration.Email == null)
-            {
-                await Console.Error.WriteLineAsync("You don't have your email set in the config.json file");
-                return;
-            }
-
-            if (token)
-            {
-                string newToken;
-                if (!string.IsNullOrEmpty(email) || !string.IsNullOrEmpty(configEmail))
-                {
-                    var tokenOk = await userLogic.CheckTokenAsync(email);
-                    if (!tokenOk)
-                    {
-                        await Console.Out.WriteAsync(
-                            $"Invalid token in the token file, please type your password: ");
-                        var passwordFromUser = Console.ReadLine();
-                        var passwordOk = await userLogic.CheckPasswordAsync(email, passwordFromUser);
-                        if (!passwordOk)
-                        {
-                            await Console.Error.WriteLineAsync("Bad password!");
-                            return;
-                        }
-                    }
-                    newToken = await userLogic.GenerateNewTokenAsync(email);
-                    if (newToken == null)
-                    {
-                        await Console.Error.WriteLineAsync("No such user");
-                        return;
-                    }
-                }
-                else
-                {
-                    await Console.Error.WriteLineAsync("Use valid email address");
-                    return;
-                }
-
-                await Console.Out.WriteLineAsync($"This is your new token: {newToken}");
-                var success = await userLogic.UpdateTokenInFileAsync(newToken, email);
-                if (!success)
-                {
-                    await Console.Error.WriteLineAsync(
-                        $"It wasn't possible to update your token in file " +
-                        $"{Path.Combine(Program.Configuration.PathToToken, email!)}, please do it manually!");
-                }
-            }
-
-            if (password)
-            {
-                if (!string.IsNullOrEmpty(email) || !string.IsNullOrEmpty(configEmail))
-                {
-                    string emailToUse = !string.IsNullOrEmpty(email) ? email : configEmail;
-                    await userLogic.UpdatePasswordAsync(emailToUse);
-                }
-                else
-                {
-                    await Console.Error.WriteLineAsync("Use valid email address");
-                }
-            }
-        }
-
-        public async Task HandleDeleteAsync(string email, bool settingsConfigEmail)
-        {
-            string configEmail = null;
-            if (settingsConfigEmail && Program.Configuration.Email != null)
-            {
-                configEmail = Program.Configuration.Email;
-            }
-            if (settingsConfigEmail && Program.Configuration.Email == null)
-            {
-                await Console.Error.WriteLineAsync("You don't have your email set in the config.json file");
-                return;
-            }
-
-            if (!string.IsNullOrEmpty(email) || !string.IsNullOrEmpty(configEmail))
-            {
-                string emailToUse = !string.IsNullOrEmpty(email) ? email : configEmail;
-                await userLogic.DeleteUserAsync(emailToUse);
-            }
-            else
-            {
-                await Console.Error.WriteLineAsync("Use valid email address");
+                Environment.Exit(0);
             }
         }
 

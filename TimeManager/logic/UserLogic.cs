@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using DAL.models;
 using DAL.repository;
 using Newtonsoft.Json;
 using TimeManager.configuration;
@@ -22,21 +23,6 @@ namespace TimeManager.logic
             else
             {
                 await Console.Out.WriteLineAsync($"Welcome {user.Name}!");
-                await Console.Out.WriteLineAsync(
-                    $"Your token is {user.Token}, " +
-                    $"token saved to {Path.Combine(Program.Configuration.PathToToken, user.Email)}");
-                var tokenFile = Path.Combine(Program.Configuration.PathToToken, user.Email);
-                try
-                {
-                    await using var stream = File.Create(tokenFile);
-                    await writeToFileAsync(user.Token, stream);
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    await Console.Error.WriteLineAsync(
-                        $"It wasn't possible to create your token file into " +
-                        $"{Program.Configuration.PathToToken}, verify that the directory exists");
-                }
             }
         }
 
@@ -46,52 +32,12 @@ namespace TimeManager.logic
             await stream.WriteAsync(data, 0, data.Length);
         }
 
-        public async Task ReadUserSettingsAsync(string email)
+        public async Task<User> ReadUserSettingsAsync(string email)
         {
             var user = await userRepository.GetUserByEmailAsync(email);
-            if (user == null)
-            {
-                await Console.Error.WriteLineAsync($"No such user!");
-            }
-            else
-            {
-                await Console.Out.WriteLineAsync($"Name: {user.Name}\nEmail: {user.Email}\nPassword: {user.Password}");
-            }
+            return user;
         }
-
-        public async Task ReadUserTokenAsync(string email)
-        {
-            var user = await userRepository.GetUserByEmailAsync(email);
-            if (user == null)
-            {
-                await Console.Error.WriteLineAsync("No such user!");
-            }
-            else
-            {
-                await Console.Out.WriteLineAsync($"Token: {user.Token}");
-            }
-        }
-
-        public async Task<bool> CheckTokenAsync(string email)
-        {
-            try
-            {
-                using var reader = File.OpenText(Path.Combine(Program.Configuration.PathToToken, email));
-                var token = await reader.ReadToEndAsync();
-                var user = await userRepository.GetUserByTokenAsync(token);
-                return user != null;
-            }
-            catch (Exception ex)            
-            {                
-                if (ex is ArgumentNullException or DirectoryNotFoundException or FileNotFoundException)
-                {
-                    return false;
-                }
-
-                throw;
-            }
-        }
-
+        
         public async Task<bool> CheckPasswordAsync(string email, string password)
         {
             try
@@ -110,68 +56,49 @@ namespace TimeManager.logic
             }
         }
 
-        public async Task<string> GenerateNewTokenAsync(string email)
-        {
-            var user = await userRepository.GetUserByEmailAsync(email);
-            if (user == null)
-            {
-                return null;
-            }
-
-            var token = await userRepository.GenerateNewTokenAsync();
-            await userRepository.InsertNewTokenAsync(user, token);
-            return token;
-        }
-
-        public async Task<bool> UpdateTokenInFileAsync(string newToken, string email)
-        {
-            try
-            {
-                var tokenFile = Path.Combine(Program.Configuration.PathToToken, email);
-                await File.WriteAllTextAsync(tokenFile, String.Empty);
-                await using var stream = File.OpenWrite(tokenFile);
-                await writeToFileAsync(newToken, stream);
-                return true;
-            }
-            catch (ArgumentNullException)
-            {
-                return false;
-            }
-        }
-
         public async Task UpdatePasswordAsync(string email)
         {
             var user = await userRepository.GetUserByEmailAsync(email);
-            if (user == null)
-            {
-                await Console.Error.WriteLineAsync("No such user!");
-                return;
-            }
-
-            await Console.Out.WriteAsync("Type your old password: ");
-            var password = Console.ReadLine();
-            if (user.Password != password)
-            {
-                await Console.Error.WriteLineAsync("Invalid password!");
-                return;
-            }
-
             await Console.Out.WriteAsync("Type your new password: ");
             var newPassword = Console.ReadLine();
-            if (newPassword is {Length: < 4})
+            if (newPassword is {Length: <= 3})
             {
                 await Console.Error.WriteLineAsync("Too short password!");
                 return;
             }
-
             await userRepository.InsertNewPasswordAsync(user, newPassword);
-            if (Program.Configuration.Password != null)
+            Program.Configuration.Password = newPassword;
+            
+            await Console.Out.WriteLineAsync("Do you wish to update the config.json file? [y/n]");
+            var response = await Console.In.ReadLineAsync();
+            if (response != null && response.ToLower() == "y")
             {
-                await updateJsonFileAsync(newPassword);
+                await updateJsonFileAsync(newPassword, null, null);
+            }
+        }
+        
+        public async Task UpdateNameAsync(string email)
+        {
+            var user = await userRepository.GetUserByEmailAsync(email);
+            await Console.Out.WriteAsync("Type your new password: ");
+            var newName = Console.ReadLine();
+            if (newName is {Length: <= 3})
+            {
+                await Console.Error.WriteLineAsync("Too short name!");
+                return;
+            }
+            await userRepository.InsertNewNameAsync(user, newName);
+            Program.Configuration.Name = newName;
+            
+            await Console.Out.WriteLineAsync("Do you wish to update the config.json file? [y/n]");
+            var response = await Console.In.ReadLineAsync();
+            if (response != null && response.ToLower() == "y")
+            {
+                await updateJsonFileAsync(null, null, newName);
             }
         }
 
-        private async Task updateJsonFileAsync(string newPassword)
+        private async Task updateJsonFileAsync(string newPassword, string newEmail, string newName)
         {
             string configFile =
                 Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"../../../configuration/"),
@@ -182,52 +109,40 @@ namespace TimeManager.logic
 
             Configuration newConfiguration = new Configuration
             {
-                PathToToken = Program.Configuration.PathToToken,
-                Password = newPassword,
-                Email = Program.Configuration.Email
+                Password = newPassword ?? Program.Configuration.Password,
+                Email = newEmail ?? Program.Configuration.Email,
+                Name = newName ?? Program.Configuration.Name
             };
             string output = JsonConvert.SerializeObject(newConfiguration, Formatting.Indented);
             await writeToFileAsync(output, stream);
         }
 
-        public async Task DeleteUserAsync(string email)
+        public async Task<bool> DeleteUserAsync(string email)
         {
-            var user = await userRepository.GetUserByEmailAsync(email);
-            if (user != null)
+            var success = await userRepository.DeleteUserAsync(email);
+            if (success)
             {
-                await Console.Out.WriteAsync("Type your password for deleting your account: ");
-                var password = Console.ReadLine();
-                if (user.Password != password)
-                {
-                    await Console.Error.WriteLineAsync("Incorrect password!");
-                    return;
-                }
-
-                var success = await userRepository.DeleteUserAsync(email);
-                if (success)
-                {
-                    await Console.Out.WriteAsync($"User {user.Email} deleted. Don't forget to update your config.json");
-                    try
-                    {
-                        File.Delete(Path.Combine(Program.Configuration.PathToToken, email));
-                    }
-                    catch (Exception ex)            
-                    {                
-                        if (ex is DirectoryNotFoundException or FileNotFoundException)
-                        {
-                            await Console.Error.WriteLineAsync(
-                                $"Couldn't delete {Path.Combine(Program.Configuration.PathToToken, email)}");
-                            return;
-                        }
-
-                        throw;
-                    }
-
-                    return;
-                }
+                await Console.Out.WriteLineAsync("User account deleted");
+                return true;
             }
-
             await Console.Error.WriteLineAsync("It wasn't possible to delete the account");
+            return false;
+        }
+
+        public async Task UpdateEmailAsync(string email)
+        {
+            var user = await userRepository.GetUserByEmailAsync(Program.Configuration.Email);
+            await Console.Out.WriteAsync("Type your new email: ");
+            var newEmail = await Console.In.ReadLineAsync();
+            await userRepository.InsertNewEmailAsync(user, newEmail);
+            Program.Configuration.Email = newEmail;
+            
+            await Console.Out.WriteLineAsync("Do you wish to update the config.json file? [y/n]");
+            var response = await Console.In.ReadLineAsync();
+            if (response != null && response.ToLower() == "y")
+            {
+                await updateJsonFileAsync(null, newEmail, null);
+            }
         }
     }
 }
