@@ -11,7 +11,7 @@ namespace DAL.repository
     {
         public async Task<User> GetUserByEmailAsync(string email)
         {
-            return await GetByEmailAsync(email);
+            return await GetByPropertyAsync(email);
         }
 
         public async Task<User> CreateUserAsync(string name, string email, string password)

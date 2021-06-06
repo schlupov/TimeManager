@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace DAL.models
@@ -8,12 +9,13 @@ namespace DAL.models
         public int Id { get; set; }
         public string Type { get; set; } = WorkType.Issue.ToString("G");
         [Required]
-        public string In { get; set; }
+        public DateTime In { get; set; }
         [Required]
-        public string Out { get; set; }
+        public DateTime Out { get; set; }
         [Required]
         public string Date { get; set; }
         [StringLength(200)]
         public string Comment { get; set; }
+        public virtual Break Break { get; set; }
     }
 }

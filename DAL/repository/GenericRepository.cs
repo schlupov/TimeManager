@@ -21,7 +21,7 @@ namespace DAL.repository
             return await table.ToListAsync();
         }
 
-        protected async Task<T> GetByEmailAsync(object property)
+        protected async Task<T> GetByPropertyAsync(object property)
         {
             return await table.FindAsync(property);
         }

@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace DAL.models
@@ -7,11 +8,9 @@ namespace DAL.models
         public int Id { get; set; }
         public BreakType Type { get; set; }
         [Required]
-        public string In { get; set; }
+        public DateTime In { get; set; }
         [Required]
-        public string Out { get; set; }
-        public string Date { get; set; }
-        [StringLength(200)]
-        public string Comment { get; set; }
+        public DateTime Out { get; set; }
+        public virtual Work Work { get; set; }
     }
 }

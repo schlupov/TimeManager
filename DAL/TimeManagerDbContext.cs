@@ -11,6 +11,9 @@ namespace DAL
                                           Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                                               @"../../../../DAL/")) + @"manager.db";
         public DbSet<User> Users { get; set; }
+        public DbSet<Work> Work { get; set; }
+        public DbSet<Break> Break { get; set; }
+        public DbSet<Vacation> Vacation { get; set; }
         
         public TimeManagerDbContext()
         {

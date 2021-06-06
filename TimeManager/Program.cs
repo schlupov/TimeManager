@@ -20,7 +20,7 @@ namespace TimeManager
 
         private static async Task MainAsync()
         {
-            await Console.Out.WriteLineAsync("Do you wish to login or register? [login/register]");
+            await Console.Out.WriteLineAsync("Do you wish to login or register? [login|register]");
             var response = await Console.In.ReadLineAsync();
             switch (response)
             {
@@ -29,9 +29,9 @@ namespace TimeManager
                     await handler.HandleCreateAsync();
                     break;
                 case "login":
-                    await readConfigAsync();
-                    await checkEmailAsync();
-                    await checkPasswordAsync();
+                    await ReadConfigAsync();
+                    await CheckEmailAsync();
+                    await CheckPasswordAsync();
                     var name = await handler.HandleLogicAsync(Configuration.Email, Configuration.Password);
                     if (name == null)
                     {
@@ -41,18 +41,32 @@ namespace TimeManager
                     await Console.Out.WriteLineAsync($"Welcome {name}!");
                     break;
             }
+            
+            await ShowActionsAsync();
+            await RunAsync();
+        }
 
+        private static async Task ShowActionsAsync()
+        {
             await Console.Out.WriteLineAsync("Possible actions:");
             await Console.Out.WriteLineAsync("\tRead user settings [1]");
             await Console.Out.WriteLineAsync("\tUpdate user settings [2]");
             await Console.Out.WriteLineAsync("\tDelete user account [3]");
             await Console.Out.WriteLineAsync("\tCreate a new time record [4]");
-            await Console.Out.WriteLineAsync("\tRead records [5]");
-            await Console.Out.WriteLineAsync("\tUpdate a record [6]");
-            await Console.Out.WriteLineAsync("\tDelete a record [7]");
-            await Console.Out.WriteLineAsync("\tShow statistics [8]");
-            await Console.Out.WriteLineAsync("\tPrint help [9]");
+            await Console.Out.WriteLineAsync("\tRead records by day [5]");
+            await Console.Out.WriteLineAsync("\tUpdate a record by id [6]");
+            await Console.Out.WriteLineAsync("\tDelete a record by id [7]");
+            await Console.Out.WriteLineAsync("\tDelete a record by day [8]");
+            await Console.Out.WriteLineAsync("\tAdd vacation [9]");
+            await Console.Out.WriteLineAsync("\tDelete vacation [10]");
+            await Console.Out.WriteLineAsync("\tShow your work by month[11]");
+            await Console.Out.WriteLineAsync("\tRead work time from file [12]");
+            await Console.Out.WriteLineAsync("\tPrint possible actions [13]");
+            await Console.Out.WriteLineAsync("\tQuit [14]");
+        }
 
+        private static async Task RunAsync()
+        {
             while (true)
             {
                 await Console.Out.WriteLineAsync("Choose a number according to what you want to do: ");
@@ -65,20 +79,70 @@ namespace TimeManager
                         await Console.Out.WriteLineAsync($"Password: {Configuration.Password}");
                         break;
                     case "2":
-                        await Console.Out.WriteLineAsync("What do you wish to update? [email/password/name]");
+                        await Console.Out.WriteLineAsync("What do you wish to update? [email|password|name]");
                         var update = await Console.In.ReadLineAsync();
                         await handler.HandleUpdateAsync(update);
                         break;
                     case "3":
                         await handler.HandleDeleteAsync();
                         break;
+                    case "4":
+                        await Console.Out.WriteLineAsync("Creating a new time record");
+                        await handler.HandleCreateRecordAsync();
+                        break;
+                    case "5":
+                        await Console.Out.WriteLineAsync("Choose a day (e.g. 31/5/2021): ");
+                        var day = await Console.In.ReadLineAsync();
+                        await handler.HandleReadRecordAsync(day);
+                        break;
+                    case "6":
+                        await Console.Out.WriteLineAsync("Choose a record (e.g. 1): ");
+                        var id = await Console.In.ReadLineAsync();
+                        await handler.HandleUpdateRecordAsync(id);
+                        break;
+                    case "7":
+                        await Console.Out.WriteLineAsync("Choose a record (e.g. 1): ");
+                        var idDelete = await Console.In.ReadLineAsync();
+                        await handler.HandleDeleteRecordAsync(idDelete);
+                        break;
+                    case "8":
+                        await Console.Out.WriteLineAsync("Choose a day (e.g. 31/5/2021): ");
+                        var dayDelete = await Console.In.ReadLineAsync();
+                        DateTime oDate = Convert.ToDateTime(dayDelete);
+                        await handler.HandleDeleteRecordAsync(oDate);
+                        break;
+                    case "9":
+                        await Console.Out.WriteLineAsync("Choose a day (e.g. 31/5/2021): ");
+                        var vacationDayString = await Console.In.ReadLineAsync();
+                        DateTime vacationDay = Convert.ToDateTime(vacationDayString);
+                        await handler.HandleAddVacationAsync(vacationDay);
+                        break;
+                    case "10":
+                        await Console.Out.WriteLineAsync("Choose a day (e.g. 31/5/2021): ");
+                        var vacationToDeleteString = await Console.In.ReadLineAsync();
+                        DateTime vacationDayToDelete = Convert.ToDateTime(vacationToDeleteString);
+                        await handler.HandleDeleteVacationAsync(vacationDayToDelete);
+                        break;
+                    case "11":
+                        await Console.Out.WriteLineAsync("Choose a month (e.g. 5): ");
+                        var month = await Console.In.ReadLineAsync();
+                        await Console.Out.WriteLineAsync("Choose a year (e.g. 2021): ");
+                        var year = await Console.In.ReadLineAsync();
+                        await handler.HandleShowHistoryAsync(month, year);
+                        break;
+                    case "12":
+                        break;
+                    case "13":
+                        await ShowActionsAsync();
+                        break;
+                    case "14":
+                        Environment.Exit(0);
+                        return;
                 }
-
-                break;
             }
         }
 
-        private static async Task checkPasswordAsync()
+        private static async Task CheckPasswordAsync()
         {
             if (Configuration.Password == null)
             {
@@ -107,7 +171,7 @@ namespace TimeManager
             }
         }
 
-        private static async Task checkEmailAsync()
+        private static async Task CheckEmailAsync()
         {
             if (Configuration.Email == null)
             {
@@ -135,7 +199,7 @@ namespace TimeManager
             }
         }
 
-        private static async Task readConfigAsync()
+        private static async Task ReadConfigAsync()
         {
             string configFile =
                 Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"../../../configuration/"),

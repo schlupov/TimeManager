@@ -2,10 +2,8 @@ namespace DAL
 {
     public enum BreakType
     {
-        Meal,
+        Lunch,
         Snack,
-        Doctor,
-        Vacation,
-        PublicHoliday
+        Doctor
     }
 }
