@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DAL.models;
-using Microsoft.EntityFrameworkCore;
 
 namespace DAL.repository
 {
     public class RecordRepository : GenericRepository<Work>
     {
-        public async Task<Work> CreateRecordAsync(string type, DateTime inTime, DateTime outTime, string date, string comment)
+        public async Task<Work> CreateRecordAsync(WorkType type, string inTime, string outTime, string date,
+            string comment)
         {
             Work work = new Work {Type = type, In = inTime, Out = outTime, Date = date, Comment = comment};
             try
@@ -24,28 +24,26 @@ namespace DAL.repository
             return work;
         }
 
-        public async Task<List<Work>> ReadRecordByDateAsync(DateTime dateTime)
+        public List<Work> ReadRecordByDate(string dateTime, string email)
         {
-            var desiredWork = await context.Work.Where(x => x.Date == dateTime.ToShortDateString()).ToListAsync();
+            var desiredWork = context.Work.Where(x => x.UserEmail == email && x.Date == dateTime).ToList();
             return desiredWork;
         }
 
-        public async Task<Work> GetRecordAsync(string id)
+        public async Task<Work> GetRecordAsync(int id)
         {
-            int result;
-            try
-            {
-                result = Int32.Parse(id);
-            }
-            catch (FormatException)
-            {
-                return null;
-            }
-            var desiredWork = await GetByPropertyAsync(result);
+            var desiredWork = await GetByPropertyAsync(id);
             return desiredWork;
         }
 
-        public async Task UpdateTypeAsync(string newType, string id)
+        public bool CheckUserRecord(string email, int id)
+        {
+            var userFromDb = context.Users.First(x => x.Email == email);
+            var desiredWork = userFromDb.Work.Where(x => x.Id == id).ToList();
+            return desiredWork.Count != 0;
+        }
+
+        public async Task UpdateTypeAsync(WorkType newType, int id)
         {
             var work = await GetRecordAsync(id);
             if (work != null)
@@ -55,7 +53,7 @@ namespace DAL.repository
             }
         }
 
-        public async Task UpdateInTimeAsync(DateTime inTime, string id)
+        public async Task UpdateInTimeAsync(string inTime, int id)
         {
             var work = await GetRecordAsync(id);
             if (work != null)
@@ -64,8 +62,8 @@ namespace DAL.repository
                 await SaveAsync();
             }
         }
-        
-        public async Task UpdateOutTimeAsync(DateTime outTime, string id)
+
+        public async Task UpdateOutTimeAsync(string outTime, int id)
         {
             var work = await GetRecordAsync(id);
             if (work != null)
@@ -74,8 +72,8 @@ namespace DAL.repository
                 await SaveAsync();
             }
         }
-        
-        public async Task UpdateDateAsync(string date, string id)
+
+        public async Task UpdateDateAsync(string date, int id)
         {
             var work = await GetRecordAsync(id);
             if (work != null)
@@ -85,7 +83,7 @@ namespace DAL.repository
             }
         }
 
-        public async Task UpdateCommentAsync(string comment, string id)
+        public async Task UpdateCommentAsync(string comment, int id)
         {
             var work = await GetRecordAsync(id);
             if (work != null)
@@ -95,7 +93,7 @@ namespace DAL.repository
             }
         }
 
-        public async Task<bool> DeleteRecordAsync(string id)
+        public async Task<bool> DeleteRecordAsync(int id)
         {
             try
             {
@@ -108,10 +106,10 @@ namespace DAL.repository
 
             return true;
         }
-        
-        public async Task<bool> DeleteRecordAsync(DateTime date)
+
+        public async Task<bool> DeleteRecordAsync(DateTime date, string email)
         {
-            var records = await ReadRecordByDateAsync(date);
+            var records = ReadRecordByDate(date.ToShortDateString(), email);
             foreach (var record in records)
             {
                 try
@@ -123,13 +121,8 @@ namespace DAL.repository
                     return false;
                 }
             }
-            return true;
-        }
 
-        public async Task<Work> GetRecordByDateAsync(string date)
-        {
-            var record = await context.Work.Where(x => x.Date == date).ToListAsync();
-            return record.First();
+            return true;
         }
     }
 }

@@ -1,11 +1,7 @@
 using System;
-using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using DAL.models;
 using DAL.repository;
-using Newtonsoft.Json;
-using TimeManager.configuration;
 
 namespace TimeManager.logic
 {
@@ -25,11 +21,20 @@ namespace TimeManager.logic
                 await Console.Out.WriteLineAsync($"Welcome {user.Name}!");
             }
         }
-
-        private static async Task writeToFileAsync(string contentToWrite, Stream stream)
+        
+        public async Task AddWorkToUserAsync(User user, Work work)
         {
-            var data = new UTF8Encoding(true).GetBytes(contentToWrite);
-            await stream.WriteAsync(data, 0, data.Length);
+            await userRepository.AddWorkToUserAsync(user, work);
+        }
+        
+        public async Task AddBreakToUserAsync(string email, Break bBreak)
+        {
+            await userRepository.AddBreakToUserAsync(email, bBreak);
+        }
+        
+        public async Task AddVacationToUserAsync(string email, Vacation vacation)
+        {
+            await userRepository.AddVacationToUserAsync(email, vacation);
         }
 
         public async Task<User> ReadUserSettingsAsync(string email)
@@ -56,7 +61,7 @@ namespace TimeManager.logic
             }
         }
 
-        public async Task UpdatePasswordAsync(string email)
+        public async Task<string> UpdatePasswordAsync(string email)
         {
             var user = await userRepository.GetUserByEmailAsync(email);
             await Console.Out.WriteAsync("Type your new password: ");
@@ -64,57 +69,24 @@ namespace TimeManager.logic
             if (newPassword is {Length: <= 3})
             {
                 await Console.Error.WriteLineAsync("Too short password!");
-                return;
+                return null;
             }
             await userRepository.InsertNewPasswordAsync(user, newPassword);
-            Program.Configuration.Password = newPassword;
-            
-            await Console.Out.WriteLineAsync("Do you wish to update the config.json file? [y/n]");
-            var response = await Console.In.ReadLineAsync();
-            if (response != null && response.ToLower() == "y")
-            {
-                await updateJsonFileAsync(newPassword, null, null);
-            }
+            return newPassword;
         }
         
-        public async Task UpdateNameAsync(string email)
+        public async Task<string> UpdateNameAsync(string email)
         {
             var user = await userRepository.GetUserByEmailAsync(email);
-            await Console.Out.WriteAsync("Type your new password: ");
+            await Console.Out.WriteAsync("Type your new name: ");
             var newName = Console.ReadLine();
             if (newName is {Length: <= 3})
             {
                 await Console.Error.WriteLineAsync("Too short name!");
-                return;
+                return null;
             }
             await userRepository.InsertNewNameAsync(user, newName);
-            Program.Configuration.Name = newName;
-            
-            await Console.Out.WriteLineAsync("Do you wish to update the config.json file? [y/n]");
-            var response = await Console.In.ReadLineAsync();
-            if (response != null && response.ToLower() == "y")
-            {
-                await updateJsonFileAsync(null, null, newName);
-            }
-        }
-
-        private async Task updateJsonFileAsync(string newPassword, string newEmail, string newName)
-        {
-            string configFile =
-                Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"../../../configuration/"),
-                    "config.json");
-            await File.WriteAllTextAsync(configFile, String.Empty);
-            await using var stream = File.OpenWrite(configFile);
-            await writeToFileAsync(string.Empty, stream);
-
-            Configuration newConfiguration = new Configuration
-            {
-                Password = newPassword ?? Program.Configuration.Password,
-                Email = newEmail ?? Program.Configuration.Email,
-                Name = newName ?? Program.Configuration.Name
-            };
-            string output = JsonConvert.SerializeObject(newConfiguration, Formatting.Indented);
-            await writeToFileAsync(output, stream);
+            return newName;
         }
 
         public async Task<bool> DeleteUserAsync(string email)
@@ -123,26 +95,11 @@ namespace TimeManager.logic
             if (success)
             {
                 await Console.Out.WriteLineAsync("User account deleted");
+                await Console.Out.WriteLineAsync("Don't forget to update the config.json file if you use it");
                 return true;
             }
             await Console.Error.WriteLineAsync("It wasn't possible to delete the account");
             return false;
-        }
-
-        public async Task UpdateEmailAsync(string email)
-        {
-            var user = await userRepository.GetUserByEmailAsync(Program.Configuration.Email);
-            await Console.Out.WriteAsync("Type your new email: ");
-            var newEmail = await Console.In.ReadLineAsync();
-            await userRepository.InsertNewEmailAsync(user, newEmail);
-            Program.Configuration.Email = newEmail;
-            
-            await Console.Out.WriteLineAsync("Do you wish to update the config.json file? [y/n]");
-            var response = await Console.In.ReadLineAsync();
-            if (response != null && response.ToLower() == "y")
-            {
-                await updateJsonFileAsync(null, newEmail, null);
-            }
         }
     }
 }

@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace DAL.models
@@ -7,15 +5,15 @@ namespace DAL.models
     public class Work
     {
         public int Id { get; set; }
-        public string Type { get; set; } = WorkType.Issue.ToString("G");
+        public WorkType Type { get; set; }
         [Required]
-        public DateTime In { get; set; }
+        public string In { get; set; }
         [Required]
-        public DateTime Out { get; set; }
+        public string Out { get; set; }
         [Required]
         public string Date { get; set; }
-        [StringLength(200)]
+        [StringLength(10)]
         public string Comment { get; set; }
-        public virtual Break Break { get; set; }
+        public string UserEmail { get; set; }
     }
 }

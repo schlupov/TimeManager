@@ -9,7 +9,14 @@ namespace DAL.models
         public string Email { get; set; }
         public string Name { get; set; }
         public string Password { get; set; }
-        public ICollection<Work> Work { get; set; }
-        public ICollection<Vacation> Vacation { get; set; } 
+        public List<Work> Work { get; }
+        public List<Vacation> Vacation { get; }
+        public List<Break> Break { get; }
+        public User()
+        {
+            Work = new List<Work>();
+            Vacation = new List<Vacation>();
+            Break = new List<Break>();
+        }
     }
 }

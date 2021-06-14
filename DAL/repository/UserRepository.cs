@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DAL.models;
-using Microsoft.EntityFrameworkCore;
 
 namespace DAL.repository
 {
@@ -29,18 +28,19 @@ namespace DAL.repository
             return user;
         }
 
+        public async Task AddWorkToUserAsync(User user, Work work)
+        {
+            var userFromDb = context.Users.First(x => x.Email == user.Email);
+            userFromDb.Work.Add(work);
+            await SaveAsync();
+        }
+
         public async Task InsertNewPasswordAsync(User user, string password)
         {
             user.Password = password;
             await SaveAsync();
         }
-        
-        public async Task InsertNewEmailAsync(User user, string email)
-        {
-            user.Email = email;
-            await SaveAsync();
-        }
-        
+
         public async Task<bool> DeleteUserAsync(string email)
         {
             try
@@ -58,6 +58,20 @@ namespace DAL.repository
         public async Task InsertNewNameAsync(User user, string name)
         {
             user.Name = name;
+            await SaveAsync();
+        }
+
+        public async Task AddBreakToUserAsync(string email, Break bBreak)
+        {
+            var userFromDb = context.Users.First(x => x.Email == email);
+            userFromDb.Break.Add(bBreak);
+            await SaveAsync();
+        }
+
+        public async Task AddVacationToUserAsync(string email, Vacation vacation)
+        {
+            var userFromDb = context.Users.First(x => x.Email == email);
+            userFromDb.Vacation.Add(vacation);
             await SaveAsync();
         }
     }

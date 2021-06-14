@@ -1,5 +1,5 @@
 {
-  "PathToToken": "/home/schlupov/school/FI/PV178/TimeManager/",
-  "Password": null,
-  "Email": null
+  "Password": "mypassword",
+  "Email": "email@test.cz",
+  "Name": "Silvie"
 }

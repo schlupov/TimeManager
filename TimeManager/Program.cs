@@ -1,16 +1,13 @@
 ﻿using System;
-using System.IO;
+using System.Globalization;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using TimeManager.configuration;
 using TimeManager.logic;
 
 
 namespace TimeManager
 {
-    class Program
+    static class Program
     {
-        public static Configuration Configuration { get; set; }
         private static readonly Handler handler = new();
 
         public static void Main()
@@ -22,6 +19,7 @@ namespace TimeManager
         {
             await Console.Out.WriteLineAsync("Do you wish to login or register? [login|register]");
             var response = await Console.In.ReadLineAsync();
+            await handler.ReadConfigAsync();
             switch (response)
             {
                 case "register":
@@ -29,57 +27,65 @@ namespace TimeManager
                     await handler.HandleCreateAsync();
                     break;
                 case "login":
-                    await ReadConfigAsync();
                     await CheckEmailAsync();
                     await CheckPasswordAsync();
-                    var name = await handler.HandleLogicAsync(Configuration.Email, Configuration.Password);
+                    var name = await handler.HandleLogicAsync(handler.Configuration.Email,
+                        handler.Configuration.Password);
                     if (name == null)
                     {
                         await Console.Error.WriteLineAsync("Bad credentials");
                         Environment.Exit(1);
                     }
+
                     await Console.Out.WriteLineAsync($"Welcome {name}!");
                     break;
+                default:
+                    await Console.Error.WriteLineAsync("Unknown command");
+                    Environment.Exit(1);
+                    return;
             }
-            
+
             await ShowActionsAsync();
             await RunAsync();
         }
 
         private static async Task ShowActionsAsync()
         {
-            await Console.Out.WriteLineAsync("Possible actions:");
-            await Console.Out.WriteLineAsync("\tRead user settings [1]");
-            await Console.Out.WriteLineAsync("\tUpdate user settings [2]");
-            await Console.Out.WriteLineAsync("\tDelete user account [3]");
-            await Console.Out.WriteLineAsync("\tCreate a new time record [4]");
-            await Console.Out.WriteLineAsync("\tRead records by day [5]");
-            await Console.Out.WriteLineAsync("\tUpdate a record by id [6]");
-            await Console.Out.WriteLineAsync("\tDelete a record by id [7]");
-            await Console.Out.WriteLineAsync("\tDelete a record by day [8]");
-            await Console.Out.WriteLineAsync("\tAdd vacation [9]");
-            await Console.Out.WriteLineAsync("\tDelete vacation [10]");
-            await Console.Out.WriteLineAsync("\tShow your work by month[11]");
-            await Console.Out.WriteLineAsync("\tRead work time from file [12]");
-            await Console.Out.WriteLineAsync("\tPrint possible actions [13]");
-            await Console.Out.WriteLineAsync("\tQuit [14]");
+            await Console.Out.WriteLineAsync("Possible actions [1-17]:");
+            await Console.Out.WriteAsync("\tRead user settings [1]\n");
+            await Console.Out.WriteAsync("\tUpdate user settings [2]\n");
+            await Console.Out.WriteAsync("\tDelete user account [3]\n");
+            await Console.Out.WriteAsync("\tCreate a new time record [4]\n");
+            await Console.Out.WriteAsync("\tRead records by day [5]\n");
+            await Console.Out.WriteAsync("\tUpdate a record by id [6]\n");
+            await Console.Out.WriteAsync("\tDelete a record by id [7]\n");
+            await Console.Out.WriteAsync("\tDelete a record by day [8]\n");
+            await Console.Out.WriteAsync("\tAdd a break [9]\n");
+            await Console.Out.WriteAsync("\tUpdate a break by date [10]\n");
+            await Console.Out.WriteAsync("\tDelete a break by date [11]\n");
+            await Console.Out.WriteAsync("\tAdd a vacation [12]\n");
+            await Console.Out.WriteAsync("\tDelete a vacation [13]\n");
+            await Console.Out.WriteAsync("\tShow your work by month [14]\n");
+            await Console.Out.WriteAsync("\tRead work time from file by day [15]\n");
+            await Console.Out.WriteAsync("\tPrint possible actions [16]\n");
+            await Console.Out.WriteAsync("\tQuit [17]\n");
         }
 
         private static async Task RunAsync()
         {
             while (true)
             {
-                await Console.Out.WriteLineAsync("Choose a number according to what you want to do: ");
+                await Console.Out.WriteAsync("Choose a number according to what you want to do: ");
                 var selection = await Console.In.ReadLineAsync();
                 switch (selection)
                 {
                     case "1":
-                        await Console.Out.WriteLineAsync($"Name: {Configuration.Name}");
-                        await Console.Out.WriteLineAsync($"Email: {Configuration.Email}");
-                        await Console.Out.WriteLineAsync($"Password: {Configuration.Password}");
+                        await Console.Out.WriteLineAsync($"Name: {handler.Configuration.Name}");
+                        await Console.Out.WriteLineAsync($"Email: {handler.Configuration.Email}");
+                        await Console.Out.WriteLineAsync($"Password: {handler.Configuration.Password}");
                         break;
                     case "2":
-                        await Console.Out.WriteLineAsync("What do you wish to update? [email|password|name]");
+                        await Console.Out.WriteLineAsync("What do you wish to update? [password|name]");
                         var update = await Console.In.ReadLineAsync();
                         await handler.HandleUpdateAsync(update);
                         break;
@@ -91,76 +97,86 @@ namespace TimeManager
                         await handler.HandleCreateRecordAsync();
                         break;
                     case "5":
-                        await Console.Out.WriteLineAsync("Choose a day (e.g. 31/5/2021): ");
+                        await Console.Out.WriteAsync("Choose a day (e.g. 31/5/2021): ");
                         var day = await Console.In.ReadLineAsync();
-                        await handler.HandleReadRecordAsync(day);
+                        handler.HandleReadRecord(day);
                         break;
                     case "6":
-                        await Console.Out.WriteLineAsync("Choose a record (e.g. 1): ");
+                        await Console.Out.WriteAsync("Choose a record (e.g. 1): ");
                         var id = await Console.In.ReadLineAsync();
                         await handler.HandleUpdateRecordAsync(id);
                         break;
                     case "7":
-                        await Console.Out.WriteLineAsync("Choose a record (e.g. 1): ");
+                        await Console.Out.WriteAsync("Choose a record (e.g. 1): ");
                         var idDelete = await Console.In.ReadLineAsync();
                         await handler.HandleDeleteRecordAsync(idDelete);
                         break;
                     case "8":
-                        await Console.Out.WriteLineAsync("Choose a day (e.g. 31/5/2021): ");
+                        await Console.Out.WriteAsync("Choose a day (e.g. 31/5/2021): ");
                         var dayDelete = await Console.In.ReadLineAsync();
-                        DateTime oDate = Convert.ToDateTime(dayDelete);
-                        await handler.HandleDeleteRecordAsync(oDate);
+                        await handler.HandleDeleteRecordAsync(dayDelete);
                         break;
                     case "9":
-                        await Console.Out.WriteLineAsync("Choose a day (e.g. 31/5/2021): ");
-                        var vacationDayString = await Console.In.ReadLineAsync();
-                        DateTime vacationDay = Convert.ToDateTime(vacationDayString);
-                        await handler.HandleAddVacationAsync(vacationDay);
+                        await Console.Out.WriteLineAsync("Creating a new break");
+                        await handler.HandleAddBreakAsync();
                         break;
                     case "10":
-                        await Console.Out.WriteLineAsync("Choose a day (e.g. 31/5/2021): ");
-                        var vacationToDeleteString = await Console.In.ReadLineAsync();
-                        DateTime vacationDayToDelete = Convert.ToDateTime(vacationToDeleteString);
-                        await handler.HandleDeleteVacationAsync(vacationDayToDelete);
+                        await handler.HandleUpdateBreakAsync();
                         break;
                     case "11":
+                        await handler.HandleDeleteBreakAsync();
+                        break;
+                    case "12":
+                        await Console.Out.WriteAsync("Choose a day (e.g. 31/5/2021): ");
+                        var vacationDayString = await Console.In.ReadLineAsync();
+                        await handler.HandleAddVacationAsync(vacationDayString);
+                        break;
+                    case "13":
+                        await Console.Out.WriteAsync("Choose a day (e.g. 31/5/2021): ");
+                        var vacationDayToDelete = await Console.In.ReadLineAsync();
+                        await handler.HandleDeleteVacationAsync(vacationDayToDelete);
+                        break;
+                    case "14":
                         await Console.Out.WriteLineAsync("Choose a month (e.g. 5): ");
                         var month = await Console.In.ReadLineAsync();
                         await Console.Out.WriteLineAsync("Choose a year (e.g. 2021): ");
                         var year = await Console.In.ReadLineAsync();
-                        await handler.HandleShowHistoryAsync(month, year);
+                        handler.HandleShowHistory(month, year);
                         break;
-                    case "12":
+                    case "15":
                         break;
-                    case "13":
+                    case "16":
                         await ShowActionsAsync();
                         break;
-                    case "14":
+                    case "17":
                         Environment.Exit(0);
                         return;
+                    default:
+                        await Console.Error.WriteLineAsync("Unknown command");
+                        break;
                 }
             }
         }
 
         private static async Task CheckPasswordAsync()
         {
-            if (Configuration.Password == null)
+            if (handler.Configuration.Password == null)
             {
-                await Console.Out.WriteLineAsync("Type your password: ");
+                await Console.Out.WriteAsync("Type your password: ");
                 var password = await Console.In.ReadLineAsync();
-                Configuration.Password = password;
+                handler.Configuration.Password = password;
             }
             else
             {
                 await Console.Out.WriteLineAsync(
-                    $"Using password from config file for user with email {Configuration.Email}");
+                    $"Using password from config file for user with email {handler.Configuration.Email}");
                 await Console.Out.WriteLineAsync("Do you wish to use this password? [y/n]");
                 var response = await Console.In.ReadLineAsync();
                 if (response != null && response.ToLower() == "n")
                 {
-                    await Console.Out.WriteLineAsync("Type your password: ");
+                    await Console.Out.WriteAsync("Type your password: ");
                     var password = await Console.In.ReadLineAsync();
-                    Configuration.Password = password;
+                    handler.Configuration.Password = password;
                 }
 
                 if (response != null && response.ToLower() != "y" && response.ToLower() != "n")
@@ -173,22 +189,22 @@ namespace TimeManager
 
         private static async Task CheckEmailAsync()
         {
-            if (Configuration.Email == null)
+            if (handler.Configuration.Email == null)
             {
-                await Console.Out.WriteLineAsync("Type your email: ");
+                await Console.Out.WriteAsync("Type your email: ");
                 var email = await Console.In.ReadLineAsync();
-                Configuration.Email = email;
+                handler.Configuration.Email = email;
             }
             else
             {
-                await Console.Out.WriteLineAsync($"Using email {Configuration.Email} from config file");
+                await Console.Out.WriteLineAsync($"Using email {handler.Configuration.Email} from config file");
                 await Console.Out.WriteLineAsync("Do you wish to use this email? [y/n]");
                 var response = await Console.In.ReadLineAsync();
                 if (response != null && response.ToLower() == "n")
                 {
-                    await Console.Out.WriteLineAsync("Type your email: ");
+                    await Console.Out.WriteAsync("Type your email: ");
                     var email = await Console.In.ReadLineAsync();
-                    Configuration.Email = email;
+                    handler.Configuration.Email = email;
                 }
 
                 if (response != null && response.ToLower() != "y" && response.ToLower() != "n")
@@ -197,24 +213,17 @@ namespace TimeManager
                     Environment.Exit(1);
                 }
             }
-        }
 
-        private static async Task ReadConfigAsync()
-        {
-            string configFile =
-                Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"../../../configuration/"),
-                    "config.json");
-            if (File.Exists(configFile))
+            var user = await handler.HandleReadUsersByEmailAsync(handler.Configuration.Email);
+            if (user == null)
             {
-                Configuration =
-                    JsonConvert.DeserializeObject<Configuration>(await File.ReadAllTextAsync(configFile));
+                handler.Configuration.Password = null;
+                return;
             }
-            else
+
+            if (user.Password != handler.Configuration.Password)
             {
-                Configuration = new Configuration
-                {
-                    Password = null, Email = null, Name = null
-                };
+                handler.Configuration.Password = null;
             }
         }
     }

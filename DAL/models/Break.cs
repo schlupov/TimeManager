@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.models
 {
@@ -8,9 +9,11 @@ namespace DAL.models
         public int Id { get; set; }
         public BreakType Type { get; set; }
         [Required]
-        public DateTime In { get; set; }
+        public string In { get; set; }
         [Required]
-        public DateTime Out { get; set; }
-        public virtual Work Work { get; set; }
+        public string Out { get; set; }
+        [Required]
+        public string Date { get; set; }
+        public string UserEmail { get; set; }
     }
 }

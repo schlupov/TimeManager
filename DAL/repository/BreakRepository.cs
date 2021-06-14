@@ -8,9 +8,9 @@ namespace DAL.repository
 {
     public class BreakRepository : GenericRepository<Break>
     {
-        public async Task<Break> CreateBreakAsync(BreakType breakType, DateTime inTime, DateTime outTime)
+        public async Task<Break> CreateBreakAsync(BreakType breakType, string inTime, string outTime, string date)
         {
-            Break workBreak = new Break {Type = breakType, In = inTime, Out = outTime};
+            Break workBreak = new Break {Type = breakType, In = inTime, Out = outTime, Date = date};
             try
             {
                 await InsertAsync(workBreak);
@@ -29,7 +29,8 @@ namespace DAL.repository
             return desiredBreak;
         }
 
-        public async Task<Break> UpdateBreakAsync(int workBreakId, BreakType breakTypeEnum, DateTime inTimeBreak, DateTime outTimeBreak)
+        public async Task<Break> UpdateBreakAsync(int workBreakId, BreakType breakTypeEnum, string inTimeBreak,
+            string outTimeBreak)
         {
             var desiredBreak = await GetBreakAsync(workBreakId);
             desiredBreak.Type = breakTypeEnum;
@@ -37,6 +38,25 @@ namespace DAL.repository
             desiredBreak.Out = outTimeBreak;
             await SaveAsync();
             return desiredBreak;
+        }
+
+        public Break ReadBreakByDate(string date, string email)
+        {
+            var desiredBreak = context.Break.Where(x => x.UserEmail == email && x.Date == date).ToList();
+            try
+            {
+                return desiredBreak.First();
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+        }
+
+        public async Task DeleteBreakAsync(string date, string email)
+        {
+            var bBreak = ReadBreakByDate(date, email);
+            await DeleteAsync(bBreak.Id);
         }
     }
 }

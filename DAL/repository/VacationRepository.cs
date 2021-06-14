@@ -2,13 +2,12 @@ using System;
 using System.Threading.Tasks;
 using DAL.models;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
 
 namespace DAL.repository
 {
     public class VacationRepository : GenericRepository<Vacation>
     {
-        public async Task<Vacation> CreateVacationAsync(DateTime date)
+        public async Task<Vacation> CreateVacationAsync(string date)
         {
             Vacation vacation = new Vacation {Date = date};
             try
@@ -22,13 +21,7 @@ namespace DAL.repository
 
             return vacation;
         }
-        
-        public async Task<Vacation> GetVacationByDate(DateTime dateTime)
-        {
-            var vacations = await context.Vacation.Where(x => x.Date == dateTime).ToListAsync();
-            return vacations.Count != 0 ? vacations.First() : null;
-        }
-        
+
         public async Task<bool> DeleteVacationAsync(int id)
         {
             try
@@ -43,10 +36,18 @@ namespace DAL.repository
             return true;
         }
 
-        public async Task<Vacation> GetVacationByDateAsync(DateTime date)
+        public Vacation GetVacationByDate(string date, string email)
         {
-            var record = await context.Vacation.Where(x => x.Date == date).ToListAsync();
-            return record.First();
+            var desiredVacation = context.Vacation.Where(x => x.UserEmail == email && x.Date == date).ToList();
+
+            try
+            {
+                return desiredVacation.First();
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
         }
     }
 }
