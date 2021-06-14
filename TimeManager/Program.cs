@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.Threading.Tasks;
+using TimeManager.configuration;
 using TimeManager.logic;
 
 
@@ -137,13 +138,18 @@ namespace TimeManager
                         await handler.HandleDeleteVacationAsync(vacationDayToDelete);
                         break;
                     case "14":
-                        await Console.Out.WriteLineAsync("Choose a month (e.g. 5): ");
+                        await Console.Out.WriteAsync("Choose a month (e.g. 5): ");
                         var month = await Console.In.ReadLineAsync();
-                        await Console.Out.WriteLineAsync("Choose a year (e.g. 2021): ");
+                        await Console.Out.WriteAsync("Choose a year (e.g. 2021): ");
                         var year = await Console.In.ReadLineAsync();
                         handler.HandleShowHistory(month, year);
                         break;
                     case "15":
+                        await Console.Out.WriteAsync("Choose a month (e.g. 5): ");
+                        var fromFileMonth = await Console.In.ReadLineAsync();
+                        await Console.Out.WriteAsync("Choose a year (e.g. 2021): ");
+                        var fromFileYear = await Console.In.ReadLineAsync();
+                        await handler.HandleReadFromFileAsync(fromFileMonth, fromFileYear);
                         break;
                     case "16":
                         await ShowActionsAsync();

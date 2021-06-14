@@ -1,5 +1,6 @@
 {
   "Password": "mypassword",
   "Email": "email@test.cz",
-  "Name": "Silvie"
+  "Name": "Silvie",
+  "ChatLog": "/home/schlupov/school/FI/PV178/TimeManager/TimeManager/configuration/chat.log"
 }

@@ -5,7 +5,7 @@ namespace DAL.models
     public class Work
     {
         public int Id { get; set; }
-        public WorkType Type { get; set; }
+        public WorkType Type { get; set; } = WorkType.Issue;
         [Required]
         public string In { get; set; }
         [Required]

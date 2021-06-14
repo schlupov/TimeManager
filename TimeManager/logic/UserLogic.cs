@@ -22,9 +22,9 @@ namespace TimeManager.logic
             }
         }
         
-        public async Task AddWorkToUserAsync(User user, Work work)
+        public async Task AddWorkToUserAsync(string email, Work work)
         {
-            await userRepository.AddWorkToUserAsync(user, work);
+            await userRepository.AddWorkToUserAsync(email, work);
         }
         
         public async Task AddBreakToUserAsync(string email, Break bBreak)

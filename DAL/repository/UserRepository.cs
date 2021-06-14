@@ -28,9 +28,9 @@ namespace DAL.repository
             return user;
         }
 
-        public async Task AddWorkToUserAsync(User user, Work work)
+        public async Task AddWorkToUserAsync(string email, Work work)
         {
-            var userFromDb = context.Users.First(x => x.Email == user.Email);
+            var userFromDb = context.Users.First(x => x.Email == email);
             userFromDb.Work.Add(work);
             await SaveAsync();
         }

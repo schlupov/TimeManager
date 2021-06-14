@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ConsoleTables;
 using DAL;
@@ -19,6 +20,11 @@ namespace TimeManager.logic
         private readonly RecordRepository recordRepository = new();
         private readonly BreakRepository breakRepository = new();
         private readonly VacationRepository vacationRepository = new();
+        private readonly Dictionary<int, string> Months = new()
+        {
+            {1, "Jan"}, {2, "Feb"}, {3, "Mar"}, {4, "Apr"}, {5, "May"}, {6, "Jun"}, {7, "Jul"}, {8, "Aug"}, {9, "Sep"},
+            {10, "Oct"}, {11, "Nov"}, {12, "Dec"}
+        };
         public Configuration Configuration;
 
         public async Task ReadConfigAsync()
@@ -35,7 +41,7 @@ namespace TimeManager.logic
             {
                 Configuration = new Configuration
                 {
-                    Password = null, Email = null, Name = null
+                    Password = null, Email = null, Name = null, ChatLog = null
                 };
             }
         }
@@ -85,18 +91,20 @@ namespace TimeManager.logic
             Configuration.Name = name;
             await userLogic.CreateUserAsync(name, email, password);
         }
-        
+
         private bool IsValidEmail(string email)
         {
-            try {
+            try
+            {
                 var addr = new System.Net.Mail.MailAddress(email);
                 return addr.Address == email;
             }
-            catch {
+            catch
+            {
                 return false;
             }
         }
-        
+
         public async Task<string> HandleLogicAsync(string email, string password)
         {
             bool successPassword = await userLogic.CheckPasswordAsync(email, password);
@@ -148,6 +156,28 @@ namespace TimeManager.logic
             }
         }
 
+        private async Task<string> ReadTextAsync(string filePath)
+        {
+            await using var sourceStream =
+                new FileStream(
+                    filePath,
+                    FileMode.Open, FileAccess.Read, FileShare.Read,
+                    bufferSize: 4096, useAsync: true);
+
+            var sb = new StringBuilder();
+
+            byte[] buffer = new byte[0x1000];
+            int numRead;
+            while ((numRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length)) != 0)
+            {
+                string text = Encoding.UTF8.GetString(buffer, 0, numRead);
+                sb.Append(text);
+            }
+
+            return sb.ToString();
+        }
+
+
         private async Task UpdateJsonFileAsync(string newPassword, string newEmail, string newName)
         {
             string configFile =
@@ -161,7 +191,8 @@ namespace TimeManager.logic
             {
                 Password = newPassword ?? Configuration.Password,
                 Email = newEmail ?? Configuration.Email,
-                Name = newName ?? Configuration.Name
+                Name = newName ?? Configuration.Name,
+                ChatLog = Configuration.ChatLog
             };
             string output = JsonConvert.SerializeObject(newConfiguration, Formatting.Indented);
             await WriteToFileAsync(output, stream);
@@ -229,8 +260,7 @@ namespace TimeManager.logic
 
                 await Console.Out.WriteAsync("Comment (not required): ");
                 var comment = await Console.In.ReadLineAsync();
-                
-                var user = await userLogic.ReadUserSettingsAsync(Configuration.Email);
+
                 var work = await recordRepository.CreateRecordAsync(type, inTime.ToShortTimeString(),
                     outTime.ToShortTimeString(), dateTime.ToShortDateString(), comment);
                 if (work == null)
@@ -239,7 +269,7 @@ namespace TimeManager.logic
                     return;
                 }
 
-                await userLogic.AddWorkToUserAsync(user, work);
+                await userLogic.AddWorkToUserAsync(Configuration.Email, work);
             }
             catch (FormatException exception)
             {
@@ -253,7 +283,7 @@ namespace TimeManager.logic
             string date;
             DateTime inTimeBreak;
             DateTime outTimeBreak;
-            
+
             try
             {
                 (breakType, date, inTimeBreak, outTimeBreak) =
@@ -272,9 +302,21 @@ namespace TimeManager.logic
                 return;
             }
 
-            if (inTimeBreak.Hour < 8 || outTimeBreak.Hour == 22 && outTimeBreak.Minute >= 1 || outTimeBreak.Hour >= 23)
+            if (outTimeBreak.Hour < 8 || outTimeBreak.Hour >= 22)
             {
                 await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
+                return;
+            }
+            
+            if (inTimeBreak.Hour < 8 || inTimeBreak.Hour >= 22)
+            {
+                await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
+                return;
+            }
+            
+            if (outTimeBreak < inTimeBreak)
+            {
+                await Console.Error.WriteLineAsync("You can't finish before you start ");
                 return;
             }
 
@@ -322,7 +364,7 @@ namespace TimeManager.logic
             string date;
             DateTime inTimeBreak;
             DateTime outTimeBreak;
-            
+
             try
             {
                 (breakType, date, inTimeBreak, outTimeBreak) =
@@ -333,7 +375,7 @@ namespace TimeManager.logic
                 await Console.Error.WriteLineAsync(exception.Message);
                 return;
             }
-            
+
             var work = recordRepository.ReadRecordByDate(date, Configuration.Email);
             if (work.Count == 0)
             {
@@ -341,7 +383,13 @@ namespace TimeManager.logic
                 return;
             }
 
-            if (inTimeBreak.Hour < 8 || outTimeBreak.Hour == 22 && outTimeBreak.Minute >= 1 || outTimeBreak.Hour >= 23)
+            if (outTimeBreak.Hour < 8 || outTimeBreak.Hour == 22 && outTimeBreak.Minute >= 1 || outTimeBreak.Hour >= 23)
+            {
+                await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
+                return;
+            }
+            
+            if (inTimeBreak.Hour < 8 || inTimeBreak.Hour == 22 && inTimeBreak.Minute >= 1 || inTimeBreak.Hour >= 23)
             {
                 await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
                 return;
@@ -434,6 +482,7 @@ namespace TimeManager.logic
                 await Console.Error.WriteLineAsync($"You don't have a work with id {result}");
                 return;
             }
+
             var work = await recordRepository.GetRecordAsync(result);
             if (work != null)
             {
@@ -458,6 +507,7 @@ namespace TimeManager.logic
                         {
                             break;
                         }
+
                         await recordRepository.UpdateInTimeAsync(inTime.ToShortTimeString(), result);
                         break;
                     case "3":
@@ -467,6 +517,7 @@ namespace TimeManager.logic
                         {
                             break;
                         }
+
                         await recordRepository.UpdateOutTimeAsync(outTime.ToShortTimeString(), result);
                         break;
                     case "4":
@@ -476,6 +527,7 @@ namespace TimeManager.logic
                         {
                             break;
                         }
+
                         await recordRepository.UpdateDateAsync(dateTime.ToShortDateString(), result);
                         break;
                     case "5":
@@ -486,6 +538,7 @@ namespace TimeManager.logic
                             await Console.Error.WriteLineAsync("Comment is too long");
                             return;
                         }
+
                         await UpdateCommentAsync(comment, result);
                         break;
                     default:
@@ -618,6 +671,7 @@ namespace TimeManager.logic
                     success = false;
                 }
             }
+
             if (!success)
             {
                 await Console.Error.WriteLineAsync("Couldn't delete the record");
@@ -637,7 +691,8 @@ namespace TimeManager.logic
                 return;
             }
 
-            var vacationFromDb = vacationRepository.GetVacationByDate(vacationDay.ToShortDateString(), Configuration.Email);
+            var vacationFromDb =
+                vacationRepository.GetVacationByDate(vacationDay.ToShortDateString(), Configuration.Email);
             if (vacationFromDb != null)
             {
                 await Console.Error.WriteLineAsync("Vacation on this day already exists");
@@ -667,6 +722,7 @@ namespace TimeManager.logic
                 await Console.Error.WriteLineAsync("Couldn't delete the vacation");
                 return;
             }
+
             var success = await vacationRepository.DeleteVacationAsync(vacationFromDb.Id);
             if (!success)
             {
@@ -676,6 +732,11 @@ namespace TimeManager.logic
 
         public void HandleShowHistory(string month, string year)
         {
+            if (!CheckMonthYear(month, year))
+            {
+                return;
+            }
+
             var records = GetAllRecordsByMonth(month, year);
             if (records.Count != 0)
             {
@@ -713,12 +774,44 @@ namespace TimeManager.logic
             }
         }
 
+        private static bool CheckMonthYear(string month, string year)
+        {
+            int monthNumber;
+            int yearNumber;
+            try
+            {
+                monthNumber = Int32.Parse(month);
+                yearNumber = Int32.Parse(year);
+            }
+            catch (FormatException)
+            {
+                Console.Error.WriteLine("Invalid month or year");
+                return false;
+            }
+
+            if (yearNumber < 1975 || yearNumber > 2030)
+            {
+                Console.Error.WriteLine("Invalid year");
+                return false;
+            }
+
+            if (monthNumber < 1 || monthNumber > 12)
+            {
+                Console.Error.WriteLine("Invalid month");
+                return false;
+            }
+
+            return true;
+        }
+
         private List<Vacation> GetAllVacationsByMonth(string month, string year)
         {
             List<Vacation> vacations = new List<Vacation>();
 
-            // TODO: brat vsechny dny podle mesice
-            for (int i = 1; i <= 30; i++)
+            var monthNumber = Int32.Parse(month);
+            var yearNumber = Int32.Parse(year);
+            int days = DateTime.DaysInMonth(yearNumber, monthNumber);
+            for (int i = 1; i <= days; i++)
             {
                 var date = $"{month}/{i}/{year}";
                 var vacation = vacationRepository.GetVacationByDate(date, Configuration.Email);
@@ -735,7 +828,10 @@ namespace TimeManager.logic
         {
             List<Work> records = new List<Work>();
 
-            for (int i = 1; i <= 30; i++)
+            var monthNumber = Int32.Parse(month);
+            var yearNumber = Int32.Parse(year);
+            int days = DateTime.DaysInMonth(yearNumber, monthNumber);
+            for (int i = 1; i <= days; i++)
             {
                 var date = $"{month}/{i}/{year}";
                 var record = recordRepository.ReadRecordByDate(date, Configuration.Email);
@@ -752,7 +848,10 @@ namespace TimeManager.logic
         {
             List<Break> breaks = new List<Break>();
 
-            for (int i = 1; i <= 30; i++)
+            var monthNumber = Int32.Parse(month);
+            var yearNumber = Int32.Parse(year);
+            int days = DateTime.DaysInMonth(yearNumber, monthNumber);
+            for (int i = 1; i <= days; i++)
             {
                 var date = $"{month}/{i}/{year}";
                 var bBreak = breakRepository.ReadBreakByDate(date, Configuration.Email);
@@ -788,6 +887,163 @@ namespace TimeManager.logic
             }
 
             await breakRepository.DeleteBreakAsync(desiredDate.ToShortDateString(), Configuration.Email);
+        }
+
+        public async Task HandleReadFromFileAsync(string month, string year)
+        {
+            if (!CheckMonthYear(month, year))
+            {
+                return;
+            }
+            string chatLog;
+            if (Configuration.ChatLog == null)
+            {
+                await Console.Out.WriteLineAsync("Path to chat log file: ");
+                chatLog = await Console.In.ReadLineAsync();
+            }
+            else
+            {
+                await Console.Out.WriteLineAsync(
+                    $"You have set the path to the chat log file in config.json to {Configuration.ChatLog}, do you wish to use it? [y/n]");
+                var response = await Console.In.ReadLineAsync();
+                if (response != null && response.ToLower() == "y")
+                {
+                    chatLog = Configuration.ChatLog;
+                }
+                else
+                {
+                    await Console.Out.WriteLineAsync("The path to the chat log file: ");
+                    chatLog = await Console.In.ReadLineAsync();
+                }
+            }
+
+            if (chatLog == null)
+            {
+                await Console.Error.WriteLineAsync("The path to the chat log file is not specified!");
+                return;
+            }
+
+            try
+            {
+                var chatLogAbsolute = Path.GetFullPath((new Uri(chatLog!)).LocalPath);
+                if (File.Exists(chatLogAbsolute))
+                {
+                    string text = await ReadTextAsync(chatLogAbsolute);
+                    int monthNumber;
+                    try
+                    {
+                        monthNumber = Int32.Parse(month);
+                    }
+                    catch (FormatException)
+                    {
+                        await Console.Error.WriteLineAsync("Invalid month");
+                        return;
+                    }
+                    var patternStart =
+                        new Regex(
+                            @"(BEGIN LOGGING AT (?<day>Mon|Tue|Wed|Thu|Fri|Sat|Sun) "
+                            + @"(?<month>" + Months[monthNumber] + @") "
+                            + @"(?<date> \d|\d\d) (?<time>(?:0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]) "
+                            + @"(?<year>" + year + @"))");
+                    var patternEnd =
+                        new Regex(
+                            @"(ENDING LOGGING AT (?<day>Mon|Tue|Wed|Thu|Fri|Sat|Sun) "
+                            + @"(?<month>" + Months[monthNumber] + @") "
+                            + @"(?<date> \d|\d\d) (?<time>(?:0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]) "
+                            + @"(?<year>" + year + @"))");
+                    var matchesStart = patternStart.Matches(text);
+                    var matchesEnd = patternEnd.Matches(text);
+                    if (matchesStart.Count == 0 || matchesEnd.Count == 0)
+                    {
+                        await Console.Error.WriteLineAsync("Didn't find any suitable record");
+                        return;
+                    }
+                    int j = 0;
+                    int i = 0;
+                    string previousDate = null;
+                    while (i < matchesStart.Count) 
+                    {
+                        var outTime = DateTime.Parse(matchesEnd[j].Groups["time"].Value, new CultureInfo("cs-CZ"));
+                        StringBuilder sb = new StringBuilder();
+                        sb.Append(matchesStart[i].Groups["day"].Value).Append(' ')
+                            .Append(matchesStart[i].Groups["month"].Value).Append(' ')
+                            .Append(matchesStart[i].Groups["date"].Value).Append(' ')
+                            .Append(matchesStart[i].Groups["time"].Value).Append(' ')
+                            .Append(matchesStart[i].Groups["year"].Value);
+                        var inTime = DateTime.Parse(matchesStart[i].Groups["time"].Value, new CultureInfo("cs-CZ"));
+                        StringBuilder sbDate = new StringBuilder();
+                        sbDate.Append(matchesStart[i].Groups["date"].Value).Append('/')
+                            .Append(month).Append('/')
+                            .Append(matchesStart[i].Groups["year"].Value);
+                        if (previousDate == sbDate.ToString())
+                        {
+                            i++;
+                            continue;
+                        }
+
+                        var date = DateTime.Parse(sbDate.ToString(), new CultureInfo("cs-CZ"));
+                        previousDate = sbDate.ToString();
+                        await Console.Out.WriteLineAsync($"Found work: {sb}, do you wish to save this work? [y/n]");
+                        var response = await Console.In.ReadLineAsync();
+                        if (response != null && response.ToLower() == "y")
+                        {
+                            if (inTime.Hour < 8 || inTime.Hour >= 22)
+                            {
+                                await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
+                                j++;
+                                i++;
+                                continue;
+                            }
+
+                            if (outTime.Hour < 8 || outTime.Hour >= 22)
+                            {
+                                await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
+                                j++;
+                                i++;
+                                continue;
+                            }
+
+                            await Console.Out.WriteAsync("Type [bugzilla|issue|documentation|release]: ");
+                            var typeString = await Console.In.ReadLineAsync();
+                            WorkType type;
+                            try
+                            {
+                                type = (WorkType) Enum.Parse(typeof(WorkType), typeString!, true);
+                            }
+                            catch (ArgumentException exception)
+                            {
+                                await Console.Error.WriteLineAsync(exception.Message);
+                                j++;
+                                i++;
+                                continue;
+                            }
+
+                            var work = await recordRepository.CreateRecordAsync(type, inTime.ToShortTimeString(),
+                                outTime.ToShortTimeString(), date.ToShortDateString(), null);
+                            if (work == null)
+                            {
+                                await Console.Error.WriteLineAsync("Couldn't create a new record");
+                                j++;
+                                i++;
+                                continue;
+                            }
+
+                            await userLogic.AddWorkToUserAsync(Configuration.Email, work);
+                        }
+
+                        j++;
+                        i++;
+                    }
+                }
+                else
+                {
+                    await Console.Error.WriteLineAsync($"File not found: {chatLogAbsolute}");
+                }
+            }
+            catch (Exception ex)
+            {
+                await Console.Error.WriteLineAsync(ex.Message);
+            }
         }
     }
 }

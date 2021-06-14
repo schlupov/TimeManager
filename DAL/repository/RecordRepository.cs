@@ -38,8 +38,7 @@ namespace DAL.repository
 
         public bool CheckUserRecord(string email, int id)
         {
-            var userFromDb = context.Users.First(x => x.Email == email);
-            var desiredWork = userFromDb.Work.Where(x => x.Id == id).ToList();
+            var desiredWork = context.Work.Where(x => x.Id == id && x.UserEmail == email).ToList();
             return desiredWork.Count != 0;
         }
 
