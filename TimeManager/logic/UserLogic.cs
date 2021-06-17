@@ -98,7 +98,7 @@ namespace TimeManager.logic
                 await Console.Out.WriteLineAsync("Don't forget to update the config.json file if you use it");
                 return true;
             }
-            await Console.Error.WriteLineAsync("It wasn't possible to delete the account");
+            await Console.Error.WriteLineAsync("It wasn't possible to delete the account, user probably still has some work records, break or vacation");
             return false;
         }
     }

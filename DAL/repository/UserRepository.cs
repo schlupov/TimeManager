@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DAL.models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DAL.repository
 {
@@ -45,6 +46,7 @@ namespace DAL.repository
         {
             try
             {
+                //await DeleteUserRecords(email);
                 await DeleteAsync(email);
             }
             catch (InvalidOperationException)
@@ -53,6 +55,28 @@ namespace DAL.repository
             }
 
             return true;
+        }
+
+        private async Task DeleteUserRecords(string email)
+        {
+            // TODO: opravit, to prijde do jednotlivych repository
+            var desiredWork = context.Work.Where(x => x.UserEmail == email).ToList();
+            var desiredBreak = context.Break.Where(x => x.UserEmail == email).ToList();
+            var desiredVacation = context.Vacation.Where(x => x.UserEmail == email).ToList();
+            foreach (var w in desiredWork)
+            {
+                await DeleteAsync(w.Id);
+            }
+
+            foreach (var b in desiredBreak)
+            {
+                await DeleteAsync(b.Id);
+            }
+
+            foreach (var v in desiredVacation)
+            {
+                await DeleteAsync(v.Id);
+            }
         }
 
         public async Task InsertNewNameAsync(User user, string name)

@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Globalization;
 using System.Threading.Tasks;
-using TimeManager.configuration;
 using TimeManager.logic;
 
 
@@ -18,7 +16,7 @@ namespace TimeManager
 
         private static async Task MainAsync()
         {
-            await Console.Out.WriteLineAsync("Do you wish to login or register? [login|register]");
+            await Console.Out.WriteAsync("Do you wish to login or register [login|register]: ");
             var response = await Console.In.ReadLineAsync();
             await handler.ReadConfigAsync();
             switch (response)
@@ -67,7 +65,7 @@ namespace TimeManager
             await Console.Out.WriteAsync("\tAdd a vacation [12]\n");
             await Console.Out.WriteAsync("\tDelete a vacation [13]\n");
             await Console.Out.WriteAsync("\tShow your work by month [14]\n");
-            await Console.Out.WriteAsync("\tRead work time from file by day [15]\n");
+            await Console.Out.WriteAsync("\tRead work time from file by month [15]\n");
             await Console.Out.WriteAsync("\tPrint possible actions [16]\n");
             await Console.Out.WriteAsync("\tQuit [17]\n");
         }
@@ -84,9 +82,13 @@ namespace TimeManager
                         await Console.Out.WriteLineAsync($"Name: {handler.Configuration.Name}");
                         await Console.Out.WriteLineAsync($"Email: {handler.Configuration.Email}");
                         await Console.Out.WriteLineAsync($"Password: {handler.Configuration.Password}");
+                        if (handler.Configuration.ChatLog != null)
+                        {
+                            await Console.Out.WriteLineAsync($"Path to chat log: {handler.Configuration.ChatLog}");
+                        }
                         break;
                     case "2":
-                        await Console.Out.WriteLineAsync("What do you wish to update? [password|name]");
+                        await Console.Out.WriteAsync("What do you wish to update [password|name]: ");
                         var update = await Console.In.ReadLineAsync();
                         await handler.HandleUpdateAsync(update);
                         break;
@@ -176,7 +178,7 @@ namespace TimeManager
             {
                 await Console.Out.WriteLineAsync(
                     $"Using password from config file for user with email {handler.Configuration.Email}");
-                await Console.Out.WriteLineAsync("Do you wish to use this password? [y/n]");
+                await Console.Out.WriteAsync("Do you wish to use this password [y/n]: ");
                 var response = await Console.In.ReadLineAsync();
                 if (response != null && response.ToLower() == "n")
                 {
@@ -204,7 +206,7 @@ namespace TimeManager
             else
             {
                 await Console.Out.WriteLineAsync($"Using email {handler.Configuration.Email} from config file");
-                await Console.Out.WriteLineAsync("Do you wish to use this email? [y/n]");
+                await Console.Out.WriteAsync("Do you wish to use this email [y/n]: ");
                 var response = await Console.In.ReadLineAsync();
                 if (response != null && response.ToLower() == "n")
                 {

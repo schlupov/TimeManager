@@ -56,7 +56,14 @@ namespace DAL.repository
         public async Task DeleteBreakAsync(string date, string email)
         {
             var bBreak = ReadBreakByDate(date, email);
-            await DeleteAsync(bBreak.Id);
+            try
+            {
+                await DeleteAsync(bBreak.Id);
+            }
+            catch (NullReferenceException)
+            {
+                await Console.Error.WriteLineAsync("You don't have a break on this day");
+            }
         }
     }
 }

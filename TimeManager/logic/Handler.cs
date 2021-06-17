@@ -131,7 +131,7 @@ namespace TimeManager.logic
                 case "password":
                     var newPassword = await userLogic.UpdatePasswordAsync(Configuration.Email);
                     Configuration.Password = newPassword;
-                    await Console.Out.WriteLineAsync("Do you wish to update the config.json file? [y/n]");
+                    await Console.Out.WriteAsync("Do you wish to update the config.json file [y/n]: ");
                     var response = await Console.In.ReadLineAsync();
                     if (response != null && response.ToLower() == "y")
                     {
@@ -142,7 +142,7 @@ namespace TimeManager.logic
                 case "name":
                     var newName = await userLogic.UpdateNameAsync(Configuration.Email);
                     Configuration.Name = newName;
-                    await Console.Out.WriteLineAsync("Do you wish to update the config.json file? [y/n]");
+                    await Console.Out.WriteAsync("Do you wish to update the config.json file [y/n]: ");
                     var responseName = await Console.In.ReadLineAsync();
                     if (responseName != null && responseName.ToLower() == "y")
                     {
@@ -151,7 +151,7 @@ namespace TimeManager.logic
 
                     break;
                 default:
-                    await Console.Error.WriteLineAsync("Bad choice, choose email, password or name");
+                    await Console.Error.WriteLineAsync("Bad choice, choose password or name");
                     break;
             }
         }
@@ -307,13 +307,13 @@ namespace TimeManager.logic
                 await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
                 return;
             }
-            
+
             if (inTimeBreak.Hour < 8 || inTimeBreak.Hour >= 22)
             {
                 await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
                 return;
             }
-            
+
             if (outTimeBreak < inTimeBreak)
             {
                 await Console.Error.WriteLineAsync("You can't finish before you start ");
@@ -388,7 +388,7 @@ namespace TimeManager.logic
                 await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
                 return;
             }
-            
+
             if (inTimeBreak.Hour < 8 || inTimeBreak.Hour == 22 && inTimeBreak.Minute >= 1 || inTimeBreak.Hour >= 23)
             {
                 await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
@@ -895,10 +895,11 @@ namespace TimeManager.logic
             {
                 return;
             }
+
             string chatLog;
             if (Configuration.ChatLog == null)
             {
-                await Console.Out.WriteLineAsync("Path to chat log file: ");
+                await Console.Out.WriteAsync("Path to chat log file: ");
                 chatLog = await Console.In.ReadLineAsync();
             }
             else
@@ -929,47 +930,24 @@ namespace TimeManager.logic
                 if (File.Exists(chatLogAbsolute))
                 {
                     string text = await ReadTextAsync(chatLogAbsolute);
-                    int monthNumber;
-                    try
+                    if (!ConvertToInteger(month, out var monthNumber))
                     {
-                        monthNumber = Int32.Parse(month);
-                    }
-                    catch (FormatException)
-                    {
-                        await Console.Error.WriteLineAsync("Invalid month");
                         return;
                     }
-                    var patternStart =
-                        new Regex(
-                            @"(BEGIN LOGGING AT (?<day>Mon|Tue|Wed|Thu|Fri|Sat|Sun) "
-                            + @"(?<month>" + Months[monthNumber] + @") "
-                            + @"(?<date> \d|\d\d) (?<time>(?:0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]) "
-                            + @"(?<year>" + year + @"))");
-                    var patternEnd =
-                        new Regex(
-                            @"(ENDING LOGGING AT (?<day>Mon|Tue|Wed|Thu|Fri|Sat|Sun) "
-                            + @"(?<month>" + Months[monthNumber] + @") "
-                            + @"(?<date> \d|\d\d) (?<time>(?:0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]) "
-                            + @"(?<year>" + year + @"))");
-                    var matchesStart = patternStart.Matches(text);
-                    var matchesEnd = patternEnd.Matches(text);
+
+                    FindStartEnd(year, monthNumber, text, out var matchesStart, out var matchesEnd);
                     if (matchesStart.Count == 0 || matchesEnd.Count == 0)
                     {
                         await Console.Error.WriteLineAsync("Didn't find any suitable record");
                         return;
                     }
+
                     int j = 0;
                     int i = 0;
                     string previousDate = null;
-                    while (i < matchesStart.Count) 
+                    while (i < matchesStart.Count)
                     {
                         var outTime = DateTime.Parse(matchesEnd[j].Groups["time"].Value, new CultureInfo("cs-CZ"));
-                        StringBuilder sb = new StringBuilder();
-                        sb.Append(matchesStart[i].Groups["day"].Value).Append(' ')
-                            .Append(matchesStart[i].Groups["month"].Value).Append(' ')
-                            .Append(matchesStart[i].Groups["date"].Value).Append(' ')
-                            .Append(matchesStart[i].Groups["time"].Value).Append(' ')
-                            .Append(matchesStart[i].Groups["year"].Value);
                         var inTime = DateTime.Parse(matchesStart[i].Groups["time"].Value, new CultureInfo("cs-CZ"));
                         StringBuilder sbDate = new StringBuilder();
                         sbDate.Append(matchesStart[i].Groups["date"].Value).Append('/')
@@ -983,38 +961,12 @@ namespace TimeManager.logic
 
                         var date = DateTime.Parse(sbDate.ToString(), new CultureInfo("cs-CZ"));
                         previousDate = sbDate.ToString();
-                        await Console.Out.WriteLineAsync($"Found work: {sb}, do you wish to save this work? [y/n]");
+                        await Console.Out.WriteAsync($"Found work: {sbDate}, do you wish to save this work [y/n]: ");
                         var response = await Console.In.ReadLineAsync();
                         if (response != null && response.ToLower() == "y")
                         {
-                            if (inTime.Hour < 8 || inTime.Hour >= 22)
+                            if (!CheckTypes(inTime, outTime, ref j, ref i, out var type))
                             {
-                                await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
-                                j++;
-                                i++;
-                                continue;
-                            }
-
-                            if (outTime.Hour < 8 || outTime.Hour >= 22)
-                            {
-                                await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
-                                j++;
-                                i++;
-                                continue;
-                            }
-
-                            await Console.Out.WriteAsync("Type [bugzilla|issue|documentation|release]: ");
-                            var typeString = await Console.In.ReadLineAsync();
-                            WorkType type;
-                            try
-                            {
-                                type = (WorkType) Enum.Parse(typeof(WorkType), typeString!, true);
-                            }
-                            catch (ArgumentException exception)
-                            {
-                                await Console.Error.WriteLineAsync(exception.Message);
-                                j++;
-                                i++;
                                 continue;
                             }
 
@@ -1044,6 +996,79 @@ namespace TimeManager.logic
             {
                 await Console.Error.WriteLineAsync(ex.Message);
             }
+        }
+
+        private void FindStartEnd(string year, int monthNumber, string text, out MatchCollection matchesStart,
+            out MatchCollection matchesEnd)
+        {
+            var patternStart =
+                new Regex(
+                    @"(BEGIN LOGGING AT (?<day>Mon|Tue|Wed|Thu|Fri|Sat|Sun) "
+                    + @"(?<month>" + Months[monthNumber] + @") "
+                    + @"(?<date> \d|\d\d) (?<time>(?:0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]) "
+                    + @"(?<year>" + year + @"))");
+            var patternEnd =
+                new Regex(
+                    @"(ENDING LOGGING AT (?<day>Mon|Tue|Wed|Thu|Fri|Sat|Sun) "
+                    + @"(?<month>" + Months[monthNumber] + @") "
+                    + @"(?<date> \d|\d\d) (?<time>(?:0?[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]) "
+                    + @"(?<year>" + year + @"))");
+            matchesStart = patternStart.Matches(text);
+            matchesEnd = patternEnd.Matches(text);
+        }
+
+        private static bool CheckTypes(DateTime inTime, DateTime outTime, ref int j, ref int i, out WorkType type)
+        {
+            if (inTime.Hour < 8 || inTime.Hour >= 22)
+            {
+                Console.Error.WriteLine("Working hours are from 8 to 22");
+                j++;
+                i++;
+                type = WorkType.Bugzilla;
+                return false;
+            }
+
+            if (outTime.Hour < 8 || outTime.Hour >= 22)
+            {
+                Console.Error.WriteLine("Working hours are from 8 to 22");
+                j++;
+                i++;
+                type = WorkType.Bugzilla;
+                return false;
+            }
+
+            Console.Out.Write("Type [bugzilla|issue|documentation|release]: ");
+            var typeString = Console.In.ReadLine();
+            try
+            {
+                type = (WorkType) Enum.Parse(typeof(WorkType), typeString!, true);
+            }
+            catch (ArgumentException exception)
+            {
+                Console.Error.WriteLine(exception.Message);
+                j++;
+                i++;
+                type = WorkType.Bugzilla;
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ConvertToInteger(string month, out int monthNumber)
+        {
+            try
+            {
+                monthNumber = Int32.Parse(month);
+            }
+            catch (FormatException)
+            {
+                Console.Error.WriteLine("Invalid month");
+                monthNumber = 0;
+                return false;
+            }
+
+            return true;
         }
     }
 }
