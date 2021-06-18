@@ -12,7 +12,7 @@ namespace DAL.repository
             Break workBreak = new Break {Type = breakType, In = inTime, Out = outTime, Date = date};
             return workBreak;
         }
-        
+
         public async Task<Break> UpdateBreakAsync(int workBreakId, BreakType breakTypeEnum, string inTimeBreak,
             string outTimeBreak)
         {

@@ -938,7 +938,8 @@ namespace TimeManager.logic
                 return;
             }
 
-            var deletedBreak = await breakRepository.DeleteBreakAsync(desiredDate.ToShortDateString(), Configuration.Email);
+            var deletedBreak =
+                await breakRepository.DeleteBreakAsync(desiredDate.ToShortDateString(), Configuration.Email);
             if (deletedBreak == null)
             {
                 await Console.Error.WriteLineAsync("Couldn't delete the break");

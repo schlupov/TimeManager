@@ -43,30 +43,30 @@ namespace TimeManager
                     return;
             }
 
-            await ShowActionsAsync();
+            ShowActions();
             await RunAsync();
         }
 
-        private static async Task ShowActionsAsync()
+        private static void ShowActions()
         {
-            await Console.Out.WriteLineAsync("Possible actions [1-17]:");
-            await Console.Out.WriteAsync("\tRead user settings [1]\n");
-            await Console.Out.WriteAsync("\tUpdate user settings [2]\n");
-            await Console.Out.WriteAsync("\tDelete user account [3]\n");
-            await Console.Out.WriteAsync("\tCreate a new time record [4]\n");
-            await Console.Out.WriteAsync("\tRead records by day [5]\n");
-            await Console.Out.WriteAsync("\tUpdate a record by id [6]\n");
-            await Console.Out.WriteAsync("\tDelete a record by id [7]\n");
-            await Console.Out.WriteAsync("\tDelete a record by day [8]\n");
-            await Console.Out.WriteAsync("\tAdd a break [9]\n");
-            await Console.Out.WriteAsync("\tUpdate a break by date [10]\n");
-            await Console.Out.WriteAsync("\tDelete a break by date [11]\n");
-            await Console.Out.WriteAsync("\tAdd a vacation [12]\n");
-            await Console.Out.WriteAsync("\tDelete a vacation [13]\n");
-            await Console.Out.WriteAsync("\tShow your work by month [14]\n");
-            await Console.Out.WriteAsync("\tRead work time from file by month [15]\n");
-            await Console.Out.WriteAsync("\tPrint possible actions [16]\n");
-            await Console.Out.WriteAsync("\tQuit [17]\n");
+            Console.Out.WriteLine("Possible actions [1-17]:");
+            Console.Out.Write("\tRead user settings [1]\n");
+            Console.Out.Write("\tUpdate user settings [2]\n");
+            Console.Out.Write("\tDelete user account [3]\n");
+            Console.Out.Write("\tCreate a new time record [4]\n");
+            Console.Out.Write("\tRead records by day [5]\n");
+            Console.Out.Write("\tUpdate a record by id [6]\n");
+            Console.Out.Write("\tDelete a record by id [7]\n");
+            Console.Out.Write("\tDelete a record by day [8]\n");
+            Console.Out.Write("\tAdd a break [9]\n");
+            Console.Out.Write("\tUpdate a break by date [10]\n");
+            Console.Out.Write("\tDelete a break by date [11]\n");
+            Console.Out.Write("\tAdd a vacation [12]\n");
+            Console.Out.Write("\tDelete a vacation [13]\n");
+            Console.Out.Write("\tShow your work by month [14]\n");
+            Console.Out.Write("\tRead work time from file by month [15]\n");
+            Console.Out.Write("\tPrint possible actions [16]\n");
+            Console.Out.Write("\tQuit [17]\n");
         }
 
         private static async Task RunAsync()
@@ -153,7 +153,7 @@ namespace TimeManager
                         await handler.HandleReadFromFileAsync(fromFileMonth, fromFileYear);
                         break;
                     case "16":
-                        await ShowActionsAsync();
+                        ShowActions();
                         break;
                     case "17":
                         Environment.Exit(0);
