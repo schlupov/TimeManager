@@ -2,41 +2,25 @@ using System;
 using System.Threading.Tasks;
 using DAL.models;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
 
 namespace DAL.repository
 {
     public class BreakRepository : GenericRepository<Break>
     {
-        public async Task<Break> CreateBreakAsync(BreakType breakType, string inTime, string outTime, string date)
+        public Break CreateBreak(BreakType breakType, string inTime, string outTime, string date)
         {
             Break workBreak = new Break {Type = breakType, In = inTime, Out = outTime, Date = date};
-            try
-            {
-                await InsertAsync(workBreak);
-            }
-            catch (InvalidOperationException)
-            {
-                return null;
-            }
-
             return workBreak;
         }
-
-        private async Task<Break> GetBreakAsync(int id)
-        {
-            var desiredBreak = await GetByPropertyAsync(id);
-            return desiredBreak;
-        }
-
+        
         public async Task<Break> UpdateBreakAsync(int workBreakId, BreakType breakTypeEnum, string inTimeBreak,
             string outTimeBreak)
         {
-            var desiredBreak = await GetBreakAsync(workBreakId);
+            var desiredBreak = context.Break.First(x => x.Id == workBreakId);
             desiredBreak.Type = breakTypeEnum;
             desiredBreak.In = inTimeBreak;
             desiredBreak.Out = outTimeBreak;
-            await SaveAsync();
+            await context.SaveChangesAsync();
             return desiredBreak;
         }
 
@@ -53,17 +37,22 @@ namespace DAL.repository
             }
         }
 
-        public async Task DeleteBreakAsync(string date, string email)
+        public async Task<Break> DeleteBreakAsync(string date, string email)
         {
             var bBreak = ReadBreakByDate(date, email);
             try
             {
-                await DeleteAsync(bBreak.Id);
+                var breakFromDb = context.Break.First(x => x.Id == bBreak.Id);
+                context.Break.Remove(breakFromDb);
+                await context.SaveChangesAsync();
+                return breakFromDb;
             }
             catch (NullReferenceException)
             {
                 await Console.Error.WriteLineAsync("You don't have a break on this day");
             }
+
+            return null;
         }
     }
 }

@@ -27,19 +27,10 @@ namespace DAL.repository
             return user;
         }
 
-        public async Task AddWorkToUserAsync(string email, Work work)
-        {
-            var userFromDb = context.Users.First(x => x.Email == email);
-            context.Users.Attach(userFromDb);
-            await context.Entry(userFromDb).Collection(t => t.Work).LoadAsync();
-            userFromDb.Work.Add(work);
-            await SaveAsync();
-        }
-
         public async Task InsertNewPasswordAsync(User user, string password)
         {
             user.Password = password;
-            await SaveAsync();
+            await context.SaveChangesAsync();
         }
 
         public async Task<bool> DeleteUserAsync(string email)
@@ -52,7 +43,7 @@ namespace DAL.repository
                 await context.Entry(userFromDb).Collection(t => t.Break).LoadAsync();
                 await context.Entry(userFromDb).Collection(t => t.Vacation).LoadAsync();
                 context.Remove(userFromDb);
-                await SaveAsync();
+                await context.SaveChangesAsync();
             }
             catch (InvalidOperationException)
             {
@@ -65,7 +56,16 @@ namespace DAL.repository
         public async Task InsertNewNameAsync(User user, string name)
         {
             user.Name = name;
-            await SaveAsync();
+            await context.SaveChangesAsync();
+        }
+        
+        public async Task AddWorkToUserAsync(string email, Work work)
+        {
+            var userFromDb = context.Users.First(x => x.Email == email);
+            context.Users.Attach(userFromDb);
+            await context.Entry(userFromDb).Collection(t => t.Work).LoadAsync();
+            userFromDb.Work.Add(work);
+            await context.SaveChangesAsync();
         }
 
         public async Task AddBreakToUserAsync(string email, Break bBreak)
@@ -74,7 +74,7 @@ namespace DAL.repository
             context.Users.Attach(userFromDb);
             await context.Entry(userFromDb).Collection(t => t.Break).LoadAsync();
             userFromDb.Break.Add(bBreak);
-            await SaveAsync();
+            await context.SaveChangesAsync();
         }
 
         public async Task AddVacationToUserAsync(string email, Vacation vacation)
@@ -83,7 +83,7 @@ namespace DAL.repository
             context.Users.Attach(userFromDb);
             await context.Entry(userFromDb).Collection(t => t.Vacation).LoadAsync();
             userFromDb.Vacation.Add(vacation);
-            await SaveAsync();
+            await context.SaveChangesAsync();
         }
     }
 }

@@ -16,15 +16,17 @@ namespace TimeManager.logic
 {
     public class Handler
     {
-        private readonly UserLogic userLogic = new();
         private readonly RecordRepository recordRepository = new();
         private readonly BreakRepository breakRepository = new();
         private readonly VacationRepository vacationRepository = new();
+        private readonly UserRepository userRepository = new();
+
         private readonly Dictionary<int, string> Months = new()
         {
             {1, "Jan"}, {2, "Feb"}, {3, "Mar"}, {4, "Apr"}, {5, "May"}, {6, "Jun"}, {7, "Jul"}, {8, "Aug"}, {9, "Sep"},
             {10, "Oct"}, {11, "Nov"}, {12, "Dec"}
         };
+
         public Configuration Configuration;
 
         public async Task ReadConfigAsync()
@@ -89,7 +91,15 @@ namespace TimeManager.logic
             Configuration.Email = email;
             Configuration.Password = password;
             Configuration.Name = name;
-            await userLogic.CreateUserAsync(name, email, password);
+            var user = await userRepository.CreateUserAsync(name, email, password);
+            if (user == null)
+            {
+                await Console.Error.WriteLineAsync("It wasn't possible to create a new user account");
+            }
+            else
+            {
+                await Console.Out.WriteLineAsync($"Welcome {user.Name}!");
+            }
         }
 
         private bool IsValidEmail(string email)
@@ -105,18 +115,25 @@ namespace TimeManager.logic
             }
         }
 
-        public async Task<string> HandleLogicAsync(string email, string password)
+        public async Task<string> HandleLoginAsync(string email, string password)
         {
-            bool successPassword = await userLogic.CheckPasswordAsync(email, password);
-            if (!successPassword)
+            User user;
+            try
+            {
+                user = await userRepository.GetUserByEmailAsync(email);
+                if (user == null || user.Password != password)
+                {
+                    return null;
+                }
+            }
+            catch (ArgumentNullException)
             {
                 return null;
             }
 
-            var user = await userLogic.ReadUserSettingsAsync(email);
-            if (user == null || Configuration.Name == user.Name)
+            if (Configuration.Name == user.Name)
             {
-                return user?.Name;
+                return user.Name;
             }
 
             await Console.Error.WriteLineAsync($"Configuring user name to {user.Name}");
@@ -129,7 +146,7 @@ namespace TimeManager.logic
             switch (update)
             {
                 case "password":
-                    var newPassword = await userLogic.UpdatePasswordAsync(Configuration.Email);
+                    var newPassword = await UpdatePasswordAsync(Configuration.Email);
                     Configuration.Password = newPassword;
                     await Console.Out.WriteAsync("Do you wish to update the config.json file [y/n]: ");
                     var response = await Console.In.ReadLineAsync();
@@ -140,7 +157,7 @@ namespace TimeManager.logic
 
                     break;
                 case "name":
-                    var newName = await userLogic.UpdateNameAsync(Configuration.Email);
+                    var newName = await UpdateNameAsync(Configuration.Email);
                     Configuration.Name = newName;
                     await Console.Out.WriteAsync("Do you wish to update the config.json file [y/n]: ");
                     var responseName = await Console.In.ReadLineAsync();
@@ -154,6 +171,36 @@ namespace TimeManager.logic
                     await Console.Error.WriteLineAsync("Bad choice, choose password or name");
                     break;
             }
+        }
+
+        private async Task<string> UpdateNameAsync(string email)
+        {
+            var user = await userRepository.GetUserByEmailAsync(email);
+            await Console.Out.WriteAsync("Type your new name: ");
+            var newName = Console.ReadLine();
+            if (newName is {Length: <= 3})
+            {
+                await Console.Error.WriteLineAsync("Too short name!");
+                return null;
+            }
+
+            await userRepository.InsertNewNameAsync(user, newName);
+            return newName;
+        }
+
+        private async Task<string> UpdatePasswordAsync(string email)
+        {
+            var user = await userRepository.GetUserByEmailAsync(email);
+            await Console.Out.WriteAsync("Type your new password: ");
+            var newPassword = Console.ReadLine();
+            if (newPassword is {Length: <= 3})
+            {
+                await Console.Error.WriteLineAsync("Too short password!");
+                return null;
+            }
+
+            await userRepository.InsertNewPasswordAsync(user, newPassword);
+            return newPassword;
         }
 
         private async Task<string> ReadTextAsync(string filePath)
@@ -206,11 +253,16 @@ namespace TimeManager.logic
 
         public async Task HandleDeleteAsync()
         {
-            bool success = await userLogic.DeleteUserAsync(Configuration.Email);
+            var success = await userRepository.DeleteUserAsync(Configuration.Email);
             if (success)
             {
+                await Console.Out.WriteLineAsync("User account deleted");
+                await Console.Out.WriteLineAsync("Don't forget to update the config.json file if you use it");
                 Environment.Exit(0);
             }
+
+            await Console.Error.WriteLineAsync(
+                "It wasn't possible to delete the account, user probably still has some work records, break or vacation");
         }
 
         public async Task HandleCreateRecordAsync()
@@ -261,7 +313,7 @@ namespace TimeManager.logic
                 await Console.Out.WriteAsync("Comment (not required): ");
                 var comment = await Console.In.ReadLineAsync();
 
-                var work = await recordRepository.CreateRecordAsync(type, inTime.ToShortTimeString(),
+                var work = recordRepository.CreateRecord(type, inTime.ToShortTimeString(),
                     outTime.ToShortTimeString(), dateTime.ToShortDateString(), comment);
                 if (work == null)
                 {
@@ -269,7 +321,7 @@ namespace TimeManager.logic
                     return;
                 }
 
-                await userLogic.AddWorkToUserAsync(Configuration.Email, work);
+                await userRepository.AddWorkToUserAsync(Configuration.Email, work);
             }
             catch (FormatException exception)
             {
@@ -331,12 +383,12 @@ namespace TimeManager.logic
                 return;
             }
 
-            var newBreak = await breakRepository.CreateBreakAsync(breakTypeEnum, inTimeBreak.ToShortTimeString(),
+            var newBreak = breakRepository.CreateBreak(breakTypeEnum, inTimeBreak.ToShortTimeString(),
                 outTimeBreak.ToShortTimeString(), date);
             if (newBreak != null)
             {
                 await Console.Out.WriteLineAsync($"Added break of type: {newBreak.Type}");
-                await userLogic.AddBreakToUserAsync(Configuration.Email, newBreak);
+                await userRepository.AddBreakToUserAsync(Configuration.Email, newBreak);
             }
             else
             {
@@ -472,7 +524,7 @@ namespace TimeManager.logic
             }
             catch (FormatException)
             {
-                await Console.Error.WriteAsync("Unknown command");
+                await Console.Error.WriteLineAsync("Unknown command");
                 return;
             }
 
@@ -653,26 +705,26 @@ namespace TimeManager.logic
 
         public async Task HandleDeleteRecordAsync(string column)
         {
-            bool success;
+            Work work;
             try
             {
                 DateTime oDate = DateTime.Parse(column, new CultureInfo("cs-CZ"));
-                success = await recordRepository.DeleteRecordAsync(oDate, Configuration.Email);
+                work = await recordRepository.DeleteRecordAsync(oDate, Configuration.Email);
             }
             catch (FormatException)
             {
                 bool isConverted = Int32.TryParse(column, out var id);
                 if (isConverted)
                 {
-                    success = await recordRepository.DeleteRecordAsync(id);
+                    work = await recordRepository.DeleteRecordAsync(id);
                 }
                 else
                 {
-                    success = false;
+                    work = null;
                 }
             }
 
-            if (!success)
+            if (work == null)
             {
                 await Console.Error.WriteLineAsync("Couldn't delete the record");
             }
@@ -706,11 +758,11 @@ namespace TimeManager.logic
                 return;
             }
 
-            var vacation = await vacationRepository.CreateVacationAsync(vacationDay.ToShortDateString());
+            var vacation = vacationRepository.CreateVacation(vacationDay.ToShortDateString());
             if (vacation != null)
             {
                 await Console.Out.WriteLineAsync($"Added a new vacation: {vacation.Date}");
-                await userLogic.AddVacationToUserAsync(Configuration.Email, vacation);
+                await userRepository.AddVacationToUserAsync(Configuration.Email, vacation);
             }
         }
 
@@ -723,8 +775,8 @@ namespace TimeManager.logic
                 return;
             }
 
-            var success = await vacationRepository.DeleteVacationAsync(vacationFromDb.Id);
-            if (!success)
+            var vacation = await vacationRepository.DeleteVacationAsync(vacationFromDb.Id);
+            if (vacation == null)
             {
                 await Console.Error.WriteLineAsync("Couldn't delete the vacation");
             }
@@ -866,7 +918,7 @@ namespace TimeManager.logic
 
         public async Task<User> HandleReadUsersByEmailAsync(string email)
         {
-            var user = await userLogic.ReadUserSettingsAsync(email);
+            var user = await userRepository.GetUserByEmailAsync(email);
             return user;
         }
 
@@ -886,7 +938,11 @@ namespace TimeManager.logic
                 return;
             }
 
-            await breakRepository.DeleteBreakAsync(desiredDate.ToShortDateString(), Configuration.Email);
+            var deletedBreak = await breakRepository.DeleteBreakAsync(desiredDate.ToShortDateString(), Configuration.Email);
+            if (deletedBreak == null)
+            {
+                await Console.Error.WriteLineAsync("Couldn't delete the break");
+            }
         }
 
         public async Task HandleReadFromFileAsync(string month, string year)
@@ -970,7 +1026,7 @@ namespace TimeManager.logic
                                 continue;
                             }
 
-                            var work = await recordRepository.CreateRecordAsync(type, inTime.ToShortTimeString(),
+                            var work = recordRepository.CreateRecord(type, inTime.ToShortTimeString(),
                                 outTime.ToShortTimeString(), date.ToShortDateString(), null);
                             if (work == null)
                             {
@@ -980,7 +1036,7 @@ namespace TimeManager.logic
                                 continue;
                             }
 
-                            await userLogic.AddWorkToUserAsync(Configuration.Email, work);
+                            await userRepository.AddWorkToUserAsync(Configuration.Email, work);
                         }
 
                         j++;

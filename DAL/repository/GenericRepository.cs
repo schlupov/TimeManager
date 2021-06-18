@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,11 +15,6 @@ namespace DAL.repository
             table = context.Set<T>();
         }
 
-        protected async Task<IEnumerable<T>> GetAllAsync()
-        {
-            return await table.ToListAsync();
-        }
-
         protected async Task<T> GetByPropertyAsync(object property)
         {
             return await table.FindAsync(property);
@@ -32,14 +26,7 @@ namespace DAL.repository
             await SaveAsync();
         }
 
-        protected async Task DeleteAsync(object id)
-        {
-            T existing = await table.FindAsync(id);
-            table.Remove(existing ?? throw new InvalidOperationException());
-            await SaveAsync();
-        }
-
-        protected async Task SaveAsync()
+        private async Task SaveAsync()
         {
             await context.SaveChangesAsync();
         }

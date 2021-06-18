@@ -3,24 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DAL.models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DAL.repository
 {
     public class RecordRepository : GenericRepository<Work>
     {
-        public async Task<Work> CreateRecordAsync(WorkType type, string inTime, string outTime, string date,
+        public Work CreateRecord(WorkType type, string inTime, string outTime, string date,
             string comment)
         {
             Work work = new Work {Type = type, In = inTime, Out = outTime, Date = date, Comment = comment};
-            try
-            {
-                await InsertAsync(work);
-            }
-            catch (InvalidOperationException)
-            {
-                return null;
-            }
-
             return work;
         }
 
@@ -48,7 +40,7 @@ namespace DAL.repository
             if (work != null)
             {
                 work.Type = newType;
-                await SaveAsync();
+                await context.SaveChangesAsync();
             }
         }
 
@@ -58,7 +50,7 @@ namespace DAL.repository
             if (work != null)
             {
                 work.In = inTime;
-                await SaveAsync();
+                await context.SaveChangesAsync();
             }
         }
 
@@ -68,7 +60,7 @@ namespace DAL.repository
             if (work != null)
             {
                 work.Out = outTime;
-                await SaveAsync();
+                await context.SaveChangesAsync();
             }
         }
 
@@ -78,7 +70,7 @@ namespace DAL.repository
             if (work != null)
             {
                 work.Date = date;
-                await SaveAsync();
+                await context.SaveChangesAsync();
             }
         }
 
@@ -88,40 +80,46 @@ namespace DAL.repository
             if (work != null)
             {
                 work.Comment = comment;
-                await SaveAsync();
+                await context.SaveChangesAsync();
             }
         }
 
-        public async Task<bool> DeleteRecordAsync(int id)
+        public async Task<Work> DeleteRecordAsync(int id)
         {
             try
             {
-                await DeleteAsync(id);
+                var workFromDb = context.Work.First(x => x.Id == id);
+                context.Work.Remove(workFromDb);
+                await context.SaveChangesAsync();
+                return workFromDb;
             }
             catch (InvalidOperationException)
             {
-                return false;
+                return null;
             }
-
-            return true;
+            catch (DbUpdateException)
+            {
+                return null;
+            }
         }
 
-        public async Task<bool> DeleteRecordAsync(DateTime date, string email)
+        public async Task<Work> DeleteRecordAsync(DateTime date, string email)
         {
             var records = ReadRecordByDate(date.ToShortDateString(), email);
             foreach (var record in records)
             {
                 try
                 {
-                    await DeleteAsync(record.Id);
+                    var work = await DeleteRecordAsync(record.Id);
+                    return work;
                 }
                 catch (InvalidOperationException)
                 {
-                    return false;
+                    return null;
                 }
             }
 
-            return true;
+            return null;
         }
     }
 }

@@ -12,7 +12,6 @@ namespace DAL.models
         public string Out { get; set; }
         [Required]
         public string Date { get; set; }
-        public virtual User User { get; set; }
         public string UserEmail { get; set; }
     }
 }

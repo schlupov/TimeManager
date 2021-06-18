@@ -7,33 +7,25 @@ namespace DAL.repository
 {
     public class VacationRepository : GenericRepository<Vacation>
     {
-        public async Task<Vacation> CreateVacationAsync(string date)
+        public Vacation CreateVacation(string date)
         {
             Vacation vacation = new Vacation {Date = date};
+            return vacation;
+        }
+
+        public async Task<Vacation> DeleteVacationAsync(int id)
+        {
             try
             {
-                await InsertAsync(vacation);
+                var vacationFromDb = context.Vacation.First(x => x.Id == id);
+                context.Vacation.Remove(vacationFromDb);
+                await context.SaveChangesAsync();
+                return vacationFromDb;
             }
             catch (InvalidOperationException)
             {
                 return null;
             }
-
-            return vacation;
-        }
-
-        public async Task<bool> DeleteVacationAsync(int id)
-        {
-            try
-            {
-                await DeleteAsync(id);
-            }
-            catch (InvalidOperationException)
-            {
-                return false;
-            }
-
-            return true;
         }
 
         public Vacation GetVacationByDate(string date, string email)

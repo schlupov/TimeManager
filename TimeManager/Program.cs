@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using TimeManager.logic;
 
-
 namespace TimeManager
 {
     static class Program
@@ -28,7 +27,7 @@ namespace TimeManager
                 case "login":
                     await CheckEmailAsync();
                     await CheckPasswordAsync();
-                    var name = await handler.HandleLogicAsync(handler.Configuration.Email,
+                    var name = await handler.HandleLoginAsync(handler.Configuration.Email,
                         handler.Configuration.Password);
                     if (name == null)
                     {

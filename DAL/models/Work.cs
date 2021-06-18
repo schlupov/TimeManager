@@ -14,7 +14,6 @@ namespace DAL.models
         public string Date { get; set; }
         [StringLength(10)]
         public string Comment { get; set; }
-        public virtual User User { get; set; }
         public string UserEmail { get; set; }
     }
 }
