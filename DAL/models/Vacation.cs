@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace DAL.models
@@ -8,6 +7,7 @@ namespace DAL.models
         public int Id { get; set; }
         [Required]
         public string Date { get; set; }
+        public virtual User User { get; set; }
         public string UserEmail { get; set; }
     }
 }

@@ -248,7 +248,7 @@ namespace TimeManager.logic
                     return;
                 }
 
-                if (outTime < inTime)
+                if (outTime <= inTime)
                 {
                     await Console.Error.WriteLineAsync("You can't finish before you start ");
                     return;
@@ -314,7 +314,7 @@ namespace TimeManager.logic
                 return;
             }
 
-            if (outTimeBreak < inTimeBreak)
+            if (outTimeBreak <= inTimeBreak)
             {
                 await Console.Error.WriteLineAsync("You can't finish before you start ");
                 return;
@@ -383,13 +383,13 @@ namespace TimeManager.logic
                 return;
             }
 
-            if (outTimeBreak.Hour < 8 || outTimeBreak.Hour == 22 && outTimeBreak.Minute >= 1 || outTimeBreak.Hour >= 23)
+            if (outTimeBreak.Hour < 8 || outTimeBreak.Hour >= 22)
             {
                 await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
                 return;
             }
 
-            if (inTimeBreak.Hour < 8 || inTimeBreak.Hour == 22 && inTimeBreak.Minute >= 1 || inTimeBreak.Hour >= 23)
+            if (inTimeBreak.Hour < 8 || inTimeBreak.Hour >= 22)
             {
                 await Console.Error.WriteLineAsync("Working hours are from 8 to 22");
                 return;
@@ -615,7 +615,7 @@ namespace TimeManager.logic
                 return false;
             }
 
-            if (outFromDb < inTime)
+            if (outFromDb <= inTime)
             {
                 Console.Error.WriteLine("You can't finish before you start ");
                 return false;
